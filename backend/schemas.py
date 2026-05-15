@@ -43,3 +43,73 @@ class UserOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# ─── Resume Schemas ────────────────────────────────────────────────────────────
+
+class ResumeOut(BaseModel):
+    id: int
+    user_id: int
+    filename: str
+    original_filename: str
+    file_size: int
+    version: int
+    is_active: bool
+    created_at: Optional[datetime]
+    # Optionally attached analysis summary
+    has_analysis: bool = False
+    overall_score: Optional[float] = None
+
+    class Config:
+        from_attributes = True
+
+
+class ResumeAnalysisRequest(BaseModel):
+    target_role: Optional[str] = None
+    target_company: Optional[str] = None
+
+
+class ResumeAnalysisOut(BaseModel):
+    id: int
+    resume_id: int
+    # Parsed data
+    skills: Optional[list] = None
+    education: Optional[list] = None
+    experience: Optional[list] = None
+    projects: Optional[list] = None
+    certifications: Optional[list] = None
+    technologies: Optional[list] = None
+    achievements: Optional[list] = None
+    summary_text: Optional[str] = None
+    # Scores
+    overall_score: Optional[float] = None
+    ats_score: Optional[float] = None
+    technical_score: Optional[float] = None
+    project_score: Optional[float] = None
+    communication_score: Optional[float] = None
+    # Feedback
+    missing_sections: Optional[list] = None
+    weak_areas: Optional[list] = None
+    ats_issues: Optional[list] = None
+    suggestions: Optional[list] = None
+    keyword_analysis: Optional[dict] = None
+    # Targeting
+    target_role: Optional[str] = None
+    target_company: Optional[str] = None
+    created_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class ResumeInterviewQuestionOut(BaseModel):
+    id: int
+    resume_id: int
+    question_text: str
+    category: str
+    difficulty: str
+    source_section: Optional[str] = None
+    source_detail: Optional[str] = None
+
+    class Config:
+        from_attributes = True

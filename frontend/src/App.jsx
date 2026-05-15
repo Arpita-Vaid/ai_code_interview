@@ -9,6 +9,8 @@ import AIInterviewRoom from './pages/AIInterviewRoom';
 import CodingProblems from './pages/CodingProblems';
 import CodingSession from './pages/CodingSession';
 import EmotionDetection from './pages/EmotionDetection';
+import ResumeUpload from './pages/ResumeUpload';
+import ResumeAnalysis from './pages/ResumeAnalysis';
 
 function AppRoutes() {
   const { user, loading } = useAuth();
@@ -29,6 +31,8 @@ function AppRoutes() {
       <Route path="/coding" element={<ProtectedRoute><CodingProblems /></ProtectedRoute>} />
       <Route path="/coding/:id" element={<ProtectedRoute><CodingSession /></ProtectedRoute>} />
       <Route path="/emotion" element={<ProtectedRoute><EmotionDetection /></ProtectedRoute>} />
+      <Route path="/resume" element={<ProtectedRoute><ResumeUpload /></ProtectedRoute>} />
+      <Route path="/resume/:id/analysis" element={<ProtectedRoute><ResumeAnalysis /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>
   );

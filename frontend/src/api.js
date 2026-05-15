@@ -42,4 +42,23 @@ export async function logout() {
   clearTokens();
 }
 
+export async function authFetchFormData(url, formData) {
+  let res = await fetch(`${API}${url}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${getAccessToken()}` },
+    body: formData,
+  });
+  if (res.status === 401) {
+    const ref = await fetch(`${API}/auth/refresh`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: getRefreshToken() }),
+    });
+    if (!ref.ok) { clearTokens(); window.location.href = '/'; return res; }
+    const { access_token } = await ref.json();
+    localStorage.setItem('access_token', access_token);
+    return authFetchFormData(url, formData);
+  }
+  return res;
+}
+
 export { API };

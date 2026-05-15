@@ -110,3 +110,80 @@ class AIInterviewMessage(Base):
     improvements  = Column(Text, nullable=True)              # JSON array
     created_at    = Column(DateTime(timezone=True), server_default=func.now())
 
+
+# ─── Resume Analysis ──────────────────────────────────────────────────────────
+
+class Resume(Base):
+    __tablename__ = "resumes"
+
+    id                = Column(Integer, primary_key=True, index=True)
+    user_id           = Column(Integer, nullable=False, index=True)
+    filename          = Column(String, nullable=False)           # stored UUID filename
+    original_filename = Column(String, nullable=False)           # user's original filename
+    file_path         = Column(String, nullable=False)
+    file_size         = Column(Integer, nullable=False)          # bytes
+    version           = Column(Integer, nullable=False, default=1)
+    is_active         = Column(Boolean, default=True)
+    created_at        = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at        = Column(DateTime(timezone=True), onupdate=func.now())
+
+
+class ResumeAnalysis(Base):
+    __tablename__ = "resume_analyses"
+
+    id                  = Column(Integer, primary_key=True, index=True)
+    resume_id           = Column(Integer, nullable=False, index=True)
+    user_id             = Column(Integer, nullable=False, index=True)
+
+    # Parsed resume data (stored as JSON strings)
+    skills              = Column(Text, nullable=True)         # JSON array
+    education           = Column(Text, nullable=True)         # JSON array
+    experience          = Column(Text, nullable=True)         # JSON array
+    projects            = Column(Text, nullable=True)         # JSON array
+    certifications      = Column(Text, nullable=True)         # JSON array
+    technologies        = Column(Text, nullable=True)         # JSON array
+    achievements        = Column(Text, nullable=True)         # JSON array
+    summary_text        = Column(Text, nullable=True)
+
+    # AI Scores (0-100)
+    overall_score       = Column(Float, nullable=True)
+    ats_score           = Column(Float, nullable=True)
+    technical_score     = Column(Float, nullable=True)
+    project_score       = Column(Float, nullable=True)
+    communication_score = Column(Float, nullable=True)
+    readability_score   = Column(Float, nullable=True)
+    experience_score    = Column(Float, nullable=True)
+    confidence_score    = Column(Float, nullable=True)        # hiring likelihood 0-100
+
+    # AI Feedback (stored as JSON strings)
+    missing_sections    = Column(Text, nullable=True)         # JSON array
+    weak_areas          = Column(Text, nullable=True)         # JSON array
+    ats_issues          = Column(Text, nullable=True)         # JSON array
+    suggestions         = Column(Text, nullable=True)         # JSON array
+    keyword_analysis    = Column(Text, nullable=True)         # JSON object
+    skill_gap_analysis  = Column(Text, nullable=True)         # JSON object
+    strengths           = Column(Text, nullable=True)         # JSON array
+    weaknesses          = Column(Text, nullable=True)         # JSON array
+    ats_breakdown       = Column(Text, nullable=True)         # JSON object (detailed ATS sub-scores)
+    improvement_roadmap = Column(Text, nullable=True)         # JSON array
+
+    # Optional targeting
+    target_role         = Column(String, nullable=True)
+    target_company      = Column(String, nullable=True)
+
+    created_at          = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class ResumeInterviewQuestion(Base):
+    __tablename__ = "resume_interview_questions"
+
+    id              = Column(Integer, primary_key=True, index=True)
+    resume_id       = Column(Integer, nullable=False, index=True)
+    user_id         = Column(Integer, nullable=False, index=True)
+    question_text   = Column(Text, nullable=False)
+    category        = Column(String, nullable=False, index=True)  # technical|hr|behavioral|project|coding
+    difficulty      = Column(String, nullable=False, index=True)  # easy|medium|hard
+    source_section  = Column(String, nullable=True)               # skills|projects|experience|education
+    source_detail   = Column(String, nullable=True)               # specific skill/project name
+    created_at      = Column(DateTime(timezone=True), server_default=func.now())
+

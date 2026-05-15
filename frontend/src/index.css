@@ -125,3 +125,34 @@ body {
 
 /* ── Spinner ── */
 .loader-spin { animation: spin .8s linear infinite; }
+
+/* ── Resume Upload Zone ── */
+.upload-zone {
+  border: 2px dashed rgba(108,99,255,0.2);
+  transition: all 0.3s ease;
+}
+.upload-zone:hover, .upload-zone-active {
+  border-color: rgba(108,99,255,0.5);
+  background: rgba(108,99,255,0.04);
+  box-shadow: 0 0 40px rgba(108,99,255,0.08);
+}
+.upload-zone-active { transform: scale(1.01); }
+
+.upload-icon {
+  transition: transform 0.3s ease;
+}
+.upload-zone:hover .upload-icon {
+  transform: scale(1.1) translateY(-2px);
+}
+
+.upload-progress-bar {
+  animation: progress-shimmer 1.5s ease infinite;
+}
+@keyframes progress-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* ── Score Ring ── */
+.score-ring { transition: stroke-dasharray 1.2s ease; }
+
