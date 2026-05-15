@@ -7,7 +7,7 @@ import Dashboard from './pages/Dashboard';
 import InterviewLobby from './pages/InterviewLobby';
 import AIInterviewRoom from './pages/AIInterviewRoom';
 import CodingProblems from './pages/CodingProblems';
-import CodingSession from './pages/CodingSession';
+
 import EmotionDetection from './pages/EmotionDetection';
 import ResumeUpload from './pages/ResumeUpload';
 import ResumeAnalysis from './pages/ResumeAnalysis';
@@ -29,7 +29,7 @@ function AppRoutes() {
       <Route path="/ai-interview" element={<ProtectedRoute><InterviewLobby /></ProtectedRoute>} />
       <Route path="/ai-interview/:roundType" element={<ProtectedRoute><AIInterviewRoom /></ProtectedRoute>} />
       <Route path="/coding" element={<ProtectedRoute><CodingProblems /></ProtectedRoute>} />
-      <Route path="/coding/:id" element={<ProtectedRoute><CodingSession /></ProtectedRoute>} />
+
       <Route path="/emotion" element={<ProtectedRoute><EmotionDetection /></ProtectedRoute>} />
       <Route path="/resume" element={<ProtectedRoute><ResumeUpload /></ProtectedRoute>} />
       <Route path="/resume/:id/analysis" element={<ProtectedRoute><ResumeAnalysis /></ProtectedRoute>} />
