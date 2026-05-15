@@ -80,3 +80,33 @@ class CodingSubmission(Base):
     runtime_ms    = Column(Integer, nullable=True)
     created_at    = Column(DateTime(timezone=True), server_default=func.now())
 
+
+# ─── AI Interview ──────────────────────────────────────────────────────────────
+
+class AIInterviewSession(Base):
+    __tablename__ = "ai_interview_sessions"
+
+    id            = Column(Integer, primary_key=True, index=True)
+    user_id       = Column(Integer, nullable=False, index=True)
+    round_type    = Column(String, nullable=False)          # hr | technical | behavioral
+    status        = Column(String, nullable=False, default="active")  # active | completed
+    total_questions = Column(Integer, nullable=False, default=0)
+    avg_score     = Column(Float, nullable=True)
+    duration_secs = Column(Integer, nullable=True)
+    created_at    = Column(DateTime(timezone=True), server_default=func.now())
+    completed_at  = Column(DateTime(timezone=True), nullable=True)
+
+
+class AIInterviewMessage(Base):
+    __tablename__ = "ai_interview_messages"
+
+    id            = Column(Integer, primary_key=True, index=True)
+    session_id    = Column(Integer, nullable=False, index=True)
+    role          = Column(String, nullable=False)           # interviewer | candidate
+    content       = Column(Text, nullable=False)
+    score         = Column(Float, nullable=True)             # only for candidate answers
+    feedback      = Column(Text, nullable=True)
+    strengths     = Column(Text, nullable=True)              # JSON array
+    improvements  = Column(Text, nullable=True)              # JSON array
+    created_at    = Column(DateTime(timezone=True), server_default=func.now())
+

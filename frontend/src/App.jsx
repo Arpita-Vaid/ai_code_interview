@@ -4,21 +4,28 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
-import InterviewSession from './pages/InterviewSession';
+import InterviewLobby from './pages/InterviewLobby';
+import AIInterviewRoom from './pages/AIInterviewRoom';
 import CodingProblems from './pages/CodingProblems';
 import CodingSession from './pages/CodingSession';
 import EmotionDetection from './pages/EmotionDetection';
 
 function AppRoutes() {
   const { user, loading } = useAuth();
-  if (loading) return <div className="page-loader"><div className="loader-spinner" /><span>Loading…</span></div>;
+  if (loading) return (
+    <div className="flex flex-col items-center justify-center h-screen gap-3 text-gray-500">
+      <div className="w-6 h-6 border-2 border-purple-500/30 border-t-purple-500 rounded-full loader-spin" />
+      <span>Loading…</span>
+    </div>
+  );
 
   return (
     <Routes>
       <Route path="/" element={user ? <Navigate to="/dashboard" /> : <Login />} />
       <Route path="/register" element={user ? <Navigate to="/dashboard" /> : <Register />} />
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-      <Route path="/interview" element={<ProtectedRoute><InterviewSession /></ProtectedRoute>} />
+      <Route path="/ai-interview" element={<ProtectedRoute><InterviewLobby /></ProtectedRoute>} />
+      <Route path="/ai-interview/:roundType" element={<ProtectedRoute><AIInterviewRoom /></ProtectedRoute>} />
       <Route path="/coding" element={<ProtectedRoute><CodingProblems /></ProtectedRoute>} />
       <Route path="/coding/:id" element={<ProtectedRoute><CodingSession /></ProtectedRoute>} />
       <Route path="/emotion" element={<ProtectedRoute><EmotionDetection /></ProtectedRoute>} />
