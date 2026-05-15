@@ -11,6 +11,7 @@ import CodingProblems from './pages/CodingProblems';
 import EmotionDetection from './pages/EmotionDetection';
 import ResumeUpload from './pages/ResumeUpload';
 import ResumeAnalysis from './pages/ResumeAnalysis';
+import ConfidenceAnalysis from './pages/ConfidenceAnalysis';
 
 function AppRoutes() {
   const { user, loading } = useAuth();
@@ -31,6 +32,7 @@ function AppRoutes() {
       <Route path="/coding" element={<ProtectedRoute><CodingProblems /></ProtectedRoute>} />
 
       <Route path="/emotion" element={<ProtectedRoute><EmotionDetection /></ProtectedRoute>} />
+      <Route path="/confidence" element={<ProtectedRoute><ConfidenceAnalysis /></ProtectedRoute>} />
       <Route path="/resume" element={<ProtectedRoute><ResumeUpload /></ProtectedRoute>} />
       <Route path="/resume/:id/analysis" element={<ProtectedRoute><ResumeAnalysis /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" />} />

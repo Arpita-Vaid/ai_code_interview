@@ -156,3 +156,11 @@ body {
 /* ── Score Ring ── */
 .score-ring { transition: stroke-dasharray 1.2s ease; }
 
+/* ── Filler Word Highlight ── */
+mark {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+  border-radius: 3px;
+  padding: 0 2px;
+  font-weight: 600;
+}

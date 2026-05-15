@@ -18,6 +18,7 @@ export default function Navbar() {
         <Link to="/coding" className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${isActive('/coding')}`}>💻 Coding</Link>
         <Link to="/resume" className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${isActive('/resume')}`}>📄 Resume</Link>
         <Link to="/emotion" className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${isActive('/emotion')}`}>😊 Emotion</Link>
+        <Link to="/confidence" className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${isActive('/confidence')}`}>🎙️ Speech</Link>
       </div>
       <div className="flex items-center gap-2.5">
         {user && (
