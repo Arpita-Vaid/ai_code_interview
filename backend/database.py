@@ -1,26 +1,21 @@
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from motor.motor_asyncio import AsyncIOMotorClient
+from beanie import init_beanie
 from backend.config import get_settings
+from backend.models import __beanie_models__  # We will define this list in models.py
 
 settings = get_settings()
 
-# SQLite: check_same_thread=False required for SQLite + FastAPI
-connect_args = {}
-if settings.DATABASE_URL.startswith("sqlite"):
-    connect_args = {"check_same_thread": False}
-
-engine = create_engine(settings.DATABASE_URL, connect_args=connect_args)
-
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-Base = declarative_base()
-
-
-def get_db():
-    """FastAPI dependency — yields a DB session and closes it after use."""
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+async def init_db():
+    """Initialize MongoDB connection and Beanie ODM."""
+    client = AsyncIOMotorClient(settings.MONGODB_URI)
+    # The database name is parsed from the URI or we can specify it explicitly.
+    # We'll just pass the default db from the client (e.g. client.aicareercoach)
+    # Motor doesn't have a default db if not specified in URI, so we extract it.
+    db_name = settings.MONGODB_URI.split('/')[-1].split('?')[0]
+    if not db_name:
+        db_name = "aicareercoach"
+    
+    await init_beanie(
+        database=client[db_name],
+        document_models=__beanie_models__
+    )

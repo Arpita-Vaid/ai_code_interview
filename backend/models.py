@@ -1,189 +1,213 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Float, Text, func
-from backend.database import Base
+from typing import Optional, List
+from datetime import datetime
+from pydantic import Field, EmailStr
+from beanie import Document
+from pymongo import IndexModel, ASCENDING
 
+class User(Document):
+    email: str
+    name: Optional[str] = None
+    avatar_url: Optional[str] = None
+    hashed_password: Optional[str] = None
+    google_id: Optional[str] = None
+    is_active: bool = True
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = None
 
-class User(Base):
-    __tablename__ = "users"
+    class Settings:
+        name = "users"
+        indexes = [
+            IndexModel([("email", ASCENDING)], unique=True),
+            IndexModel([("google_id", ASCENDING)], unique=True, partialFilterExpression={"google_id": {"$type": "string"}})
+        ]
 
-    id = Column(Integer, primary_key=True, index=True)
-    email = Column(String, unique=True, index=True, nullable=False)
-    name = Column(String, nullable=True)
-    avatar_url = Column(String, nullable=True)
+class Question(Document):
+    text: str
+    category: str
+    difficulty: str
+    keywords: str
+    hint: Optional[str] = None
+    sample_answer: Optional[str] = None
 
-    # Password auth — nullable for OAuth-only accounts
-    hashed_password = Column(String, nullable=True)
+    class Settings:
+        name = "questions"
+        indexes = ["category", "difficulty"]
 
-    # Google OAuth
-    google_id = Column(String, unique=True, nullable=True, index=True)
+class InterviewSession(Document):
+    user_id: str
+    category: str
+    difficulty: str
+    total_score: Optional[float] = None
+    status: str = "in_progress"
+    num_questions: int = 5
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    finished_at: Optional[datetime] = None
 
-    is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    class Settings:
+        name = "interview_sessions"
+        indexes = ["user_id"]
 
+class SessionAnswer(Document):
+    session_id: str
+    question_id: str
+    user_answer: str
+    ai_score: float
+    ai_feedback: str
+    time_taken: Optional[int] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
-# ─── Interview Models ──────────────────────────────────────────────────────────
+    class Settings:
+        name = "session_answers"
+        indexes = ["session_id"]
 
-class Question(Base):
-    __tablename__ = "questions"
+class CodingSubmission(Document):
+    user_id: str
+    problem_id: int
+    problem_title: Optional[str] = None
+    language: str
+    code: str
+    status: str
+    score: float = 0
+    passed_cases: int = 0
+    total_cases: int = 0
+    runtime_ms: Optional[int] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
-    id          = Column(Integer, primary_key=True, index=True)
-    text        = Column(Text, nullable=False)
-    category    = Column(String, nullable=False, index=True)   # dsa|system_design|behavioral|javascript|python|sql
-    difficulty  = Column(String, nullable=False, index=True)   # easy|medium|hard
-    keywords    = Column(Text, nullable=False)                  # comma-separated scoring keywords
-    hint        = Column(Text, nullable=True)
-    sample_answer = Column(Text, nullable=True)
+    class Settings:
+        name = "coding_submissions"
+        indexes = ["user_id", "problem_id"]
 
+class AIInterviewSession(Document):
+    user_id: str
+    round_type: str
+    status: str = "active"
+    target_company: Optional[str] = None
+    target_role: Optional[str] = None
+    difficulty: Optional[str] = None
+    total_questions: int = 0
+    avg_score: Optional[float] = None
+    duration_secs: Optional[int] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    completed_at: Optional[datetime] = None
 
-class InterviewSession(Base):
-    __tablename__ = "interview_sessions"
+    class Settings:
+        name = "ai_interview_sessions"
+        indexes = ["user_id"]
 
-    id          = Column(Integer, primary_key=True, index=True)
-    user_id     = Column(Integer, nullable=False, index=True)
-    category    = Column(String, nullable=False)
-    difficulty  = Column(String, nullable=False)
-    total_score = Column(Float, nullable=True)           # 0-100 avg across answers
-    status      = Column(String, default="in_progress")  # in_progress|completed
-    num_questions = Column(Integer, default=5)
-    created_at  = Column(DateTime(timezone=True), server_default=func.now())
-    finished_at = Column(DateTime(timezone=True), nullable=True)
+class AIInterviewMessage(Document):
+    session_id: str
+    role: str
+    content: str
+    score: Optional[float] = None
+    feedback: Optional[str] = None
+    strengths: Optional[str] = None
+    improvements: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
+    class Settings:
+        name = "ai_interview_messages"
+        indexes = ["session_id"]
 
-class SessionAnswer(Base):
-    __tablename__ = "session_answers"
+class Resume(Document):
+    user_id: str
+    filename: str
+    original_filename: str
+    file_path: str
+    file_size: int
+    version: int = 1
+    is_active: bool = True
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = None
 
-    id           = Column(Integer, primary_key=True, index=True)
-    session_id   = Column(Integer, nullable=False, index=True)
-    question_id  = Column(Integer, nullable=False)
-    user_answer  = Column(Text, nullable=False)
-    ai_score     = Column(Float, nullable=False)   # 0-100
-    ai_feedback  = Column(Text, nullable=False)
-    time_taken   = Column(Integer, nullable=True)  # seconds
-    created_at   = Column(DateTime(timezone=True), server_default=func.now())
+    class Settings:
+        name = "resumes"
+        indexes = ["user_id"]
 
+class ResumeAnalysis(Document):
+    resume_id: str
+    user_id: str
+    skills: Optional[str] = None
+    education: Optional[str] = None
+    experience: Optional[str] = None
+    projects: Optional[str] = None
+    certifications: Optional[str] = None
+    technologies: Optional[str] = None
+    achievements: Optional[str] = None
+    summary_text: Optional[str] = None
 
-# ─── Coding Submission ─────────────────────────────────────────────────────────
+    overall_score: Optional[float] = None
+    ats_score: Optional[float] = None
+    technical_score: Optional[float] = None
+    project_score: Optional[float] = None
+    communication_score: Optional[float] = None
+    readability_score: Optional[float] = None
+    experience_score: Optional[float] = None
+    confidence_score: Optional[float] = None
 
-class CodingSubmission(Base):
-    __tablename__ = "coding_submissions"
+    missing_sections: Optional[str] = None
+    weak_areas: Optional[str] = None
+    ats_issues: Optional[str] = None
+    suggestions: Optional[str] = None
+    keyword_analysis: Optional[str] = None
+    skill_gap_analysis: Optional[str] = None
+    strengths: Optional[str] = None
+    weaknesses: Optional[str] = None
+    ats_breakdown: Optional[str] = None
+    improvement_roadmap: Optional[str] = None
 
-    id            = Column(Integer, primary_key=True, index=True)
-    user_id       = Column(Integer, nullable=False, index=True)
-    problem_id    = Column(Integer, nullable=False, index=True)
-    problem_title = Column(String, nullable=True)
-    language      = Column(String, nullable=False)          # python | javascript
-    code          = Column(Text, nullable=False)
-    status        = Column(String, nullable=False)          # accepted | wrong_answer | tle | error
-    score         = Column(Float, nullable=False, default=0)
-    passed_cases  = Column(Integer, nullable=False, default=0)
-    total_cases   = Column(Integer, nullable=False, default=0)
-    runtime_ms    = Column(Integer, nullable=True)
-    created_at    = Column(DateTime(timezone=True), server_default=func.now())
+    target_role: Optional[str] = None
+    target_company: Optional[str] = None
 
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
-# ─── AI Interview ──────────────────────────────────────────────────────────────
+    class Settings:
+        name = "resume_analyses"
+        indexes = ["resume_id", "user_id"]
 
-class AIInterviewSession(Base):
-    __tablename__ = "ai_interview_sessions"
+class ResumeInterviewQuestion(Document):
+    resume_id: str
+    user_id: str
+    question_text: str
+    category: str
+    difficulty: str
+    source_section: Optional[str] = None
+    source_detail: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
-    id            = Column(Integer, primary_key=True, index=True)
-    user_id       = Column(Integer, nullable=False, index=True)
-    round_type    = Column(String, nullable=False)          # hr | technical | behavioral
-    status        = Column(String, nullable=False, default="active")  # active | completed
-    total_questions = Column(Integer, nullable=False, default=0)
-    avg_score     = Column(Float, nullable=True)
-    duration_secs = Column(Integer, nullable=True)
-    created_at    = Column(DateTime(timezone=True), server_default=func.now())
-    completed_at  = Column(DateTime(timezone=True), nullable=True)
+    class Settings:
+        name = "resume_interview_questions"
+        indexes = ["resume_id", "user_id"]
 
+class ResumeOptimization(Document):
+    resume_id: str
+    user_id: str
+    target_company: str
+    target_role: str
+    # Score comparison
+    original_ats_score: Optional[float] = None
+    optimized_ats_score: Optional[float] = None
+    original_overall_score: Optional[float] = None
+    optimized_overall_score: Optional[float] = None
+    ats_improvement: Optional[float] = None
+    # Optimized content (JSON strings)
+    optimized_summary: Optional[str] = None
+    optimized_skills: Optional[str] = None        # JSON list
+    optimized_projects: Optional[str] = None      # JSON list
+    optimized_experience: Optional[str] = None    # JSON list
+    modifications: Optional[str] = None           # JSON list of {section, original, optimized, type}
+    added_keywords: Optional[str] = None          # JSON list
+    company_tips: Optional[str] = None            # JSON list
+    # PDF
+    pdf_path: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
-class AIInterviewMessage(Base):
-    __tablename__ = "ai_interview_messages"
+    class Settings:
+        name = "resume_optimizations"
+        indexes = ["resume_id", "user_id"]
 
-    id            = Column(Integer, primary_key=True, index=True)
-    session_id    = Column(Integer, nullable=False, index=True)
-    role          = Column(String, nullable=False)           # interviewer | candidate
-    content       = Column(Text, nullable=False)
-    score         = Column(Float, nullable=True)             # only for candidate answers
-    feedback      = Column(Text, nullable=True)
-    strengths     = Column(Text, nullable=True)              # JSON array
-    improvements  = Column(Text, nullable=True)              # JSON array
-    created_at    = Column(DateTime(timezone=True), server_default=func.now())
-
-
-# ─── Resume Analysis ──────────────────────────────────────────────────────────
-
-class Resume(Base):
-    __tablename__ = "resumes"
-
-    id                = Column(Integer, primary_key=True, index=True)
-    user_id           = Column(Integer, nullable=False, index=True)
-    filename          = Column(String, nullable=False)           # stored UUID filename
-    original_filename = Column(String, nullable=False)           # user's original filename
-    file_path         = Column(String, nullable=False)
-    file_size         = Column(Integer, nullable=False)          # bytes
-    version           = Column(Integer, nullable=False, default=1)
-    is_active         = Column(Boolean, default=True)
-    created_at        = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at        = Column(DateTime(timezone=True), onupdate=func.now())
-
-
-class ResumeAnalysis(Base):
-    __tablename__ = "resume_analyses"
-
-    id                  = Column(Integer, primary_key=True, index=True)
-    resume_id           = Column(Integer, nullable=False, index=True)
-    user_id             = Column(Integer, nullable=False, index=True)
-
-    # Parsed resume data (stored as JSON strings)
-    skills              = Column(Text, nullable=True)         # JSON array
-    education           = Column(Text, nullable=True)         # JSON array
-    experience          = Column(Text, nullable=True)         # JSON array
-    projects            = Column(Text, nullable=True)         # JSON array
-    certifications      = Column(Text, nullable=True)         # JSON array
-    technologies        = Column(Text, nullable=True)         # JSON array
-    achievements        = Column(Text, nullable=True)         # JSON array
-    summary_text        = Column(Text, nullable=True)
-
-    # AI Scores (0-100)
-    overall_score       = Column(Float, nullable=True)
-    ats_score           = Column(Float, nullable=True)
-    technical_score     = Column(Float, nullable=True)
-    project_score       = Column(Float, nullable=True)
-    communication_score = Column(Float, nullable=True)
-    readability_score   = Column(Float, nullable=True)
-    experience_score    = Column(Float, nullable=True)
-    confidence_score    = Column(Float, nullable=True)        # hiring likelihood 0-100
-
-    # AI Feedback (stored as JSON strings)
-    missing_sections    = Column(Text, nullable=True)         # JSON array
-    weak_areas          = Column(Text, nullable=True)         # JSON array
-    ats_issues          = Column(Text, nullable=True)         # JSON array
-    suggestions         = Column(Text, nullable=True)         # JSON array
-    keyword_analysis    = Column(Text, nullable=True)         # JSON object
-    skill_gap_analysis  = Column(Text, nullable=True)         # JSON object
-    strengths           = Column(Text, nullable=True)         # JSON array
-    weaknesses          = Column(Text, nullable=True)         # JSON array
-    ats_breakdown       = Column(Text, nullable=True)         # JSON object (detailed ATS sub-scores)
-    improvement_roadmap = Column(Text, nullable=True)         # JSON array
-
-    # Optional targeting
-    target_role         = Column(String, nullable=True)
-    target_company      = Column(String, nullable=True)
-
-    created_at          = Column(DateTime(timezone=True), server_default=func.now())
-
-
-class ResumeInterviewQuestion(Base):
-    __tablename__ = "resume_interview_questions"
-
-    id              = Column(Integer, primary_key=True, index=True)
-    resume_id       = Column(Integer, nullable=False, index=True)
-    user_id         = Column(Integer, nullable=False, index=True)
-    question_text   = Column(Text, nullable=False)
-    category        = Column(String, nullable=False, index=True)  # technical|hr|behavioral|project|coding
-    difficulty      = Column(String, nullable=False, index=True)  # easy|medium|hard
-    source_section  = Column(String, nullable=True)               # skills|projects|experience|education
-    source_detail   = Column(String, nullable=True)               # specific skill/project name
-    created_at      = Column(DateTime(timezone=True), server_default=func.now())
+__beanie_models__ = [
+    User, Question, InterviewSession, SessionAnswer, CodingSubmission,
+    AIInterviewSession, AIInterviewMessage, Resume, ResumeAnalysis,
+    ResumeInterviewQuestion, ResumeOptimization
+]
 

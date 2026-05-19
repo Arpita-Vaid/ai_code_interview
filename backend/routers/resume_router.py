@@ -6,10 +6,11 @@ import json
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
-from sqlalchemy.orm import Session
+from fastapi.responses import FileResponse
+from pydantic import BaseModel
+from beanie import PydanticObjectId
 
-from backend.database import get_db
-from backend.models import User, Resume, ResumeAnalysis, ResumeInterviewQuestion
+from backend.models import User, Resume, ResumeAnalysis, ResumeInterviewQuestion, ResumeOptimization
 from backend.auth.dependencies import get_current_user
 from backend.schemas import (
     ResumeOut, ResumeAnalysisOut, ResumeAnalysisRequest, ResumeInterviewQuestionOut,
@@ -20,6 +21,8 @@ from backend.resume_ai_engine import (
     analyze_resume,
     generate_interview_questions,
 )
+from backend.resume_optimizer import optimize_resume
+from backend.resume_pdf_generator import generate_optimized_pdf
 
 router = APIRouter(prefix="/resume", tags=["Resume Analysis"])
 
@@ -28,15 +31,15 @@ UPLOAD_DIR = Path("uploads/resumes")
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
 
 
-def _ensure_upload_dir(user_id: int) -> Path:
+def _ensure_upload_dir(user_id: str) -> Path:
     """Create user-specific upload directory."""
-    user_dir = UPLOAD_DIR / str(user_id)
+    user_dir = UPLOAD_DIR / user_id
     user_dir.mkdir(parents=True, exist_ok=True)
     return user_dir
 
 
 def _serialize_analysis(analysis: ResumeAnalysis) -> dict:
-    """Convert a ResumeAnalysis ORM row to a dict with parsed JSON fields."""
+    """Convert a ResumeAnalysis Beanie Document to a dict with parsed JSON fields."""
     def _load_json(val, default=None):
         if val is None:
             return default
@@ -46,8 +49,8 @@ def _serialize_analysis(analysis: ResumeAnalysis) -> dict:
             return default
 
     return {
-        "id": analysis.id,
-        "resume_id": analysis.resume_id,
+        "id": str(analysis.id),
+        "resume_id": str(analysis.resume_id),
         "skills": _load_json(analysis.skills, []),
         "education": _load_json(analysis.education, []),
         "experience": _load_json(analysis.experience, []),
@@ -85,7 +88,6 @@ def _serialize_analysis(analysis: ResumeAnalysis) -> dict:
 @router.post("/upload", status_code=status.HTTP_201_CREATED)
 async def upload_resume(
     file: UploadFile = File(...),
-    db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
     """Upload a PDF resume."""
@@ -103,31 +105,29 @@ async def upload_resume(
         raise HTTPException(400, "Uploaded file is empty.")
 
     # Save file
-    user_dir = _ensure_upload_dir(user.id)
+    user_dir = _ensure_upload_dir(str(user.id))
     stored_name = f"{uuid.uuid4().hex}.pdf"
     file_path = user_dir / stored_name
     file_path.write_bytes(content)
 
     # Calculate version (count existing resumes + 1)
-    existing_count = db.query(Resume).filter(
-        Resume.user_id == user.id, Resume.is_active == True
+    existing_count = await Resume.find(
+        Resume.user_id == str(user.id), Resume.is_active == True
     ).count()
 
     # Create DB record
     resume = Resume(
-        user_id=user.id,
+        user_id=str(user.id),
         filename=stored_name,
         original_filename=file.filename,
         file_path=str(file_path),
         file_size=len(content),
         version=existing_count + 1,
     )
-    db.add(resume)
-    db.commit()
-    db.refresh(resume)
+    await resume.insert()
 
     return {
-        "id": resume.id,
+        "id": str(resume.id),
         "original_filename": resume.original_filename,
         "file_size": resume.file_size,
         "version": resume.version,
@@ -139,26 +139,22 @@ async def upload_resume(
 # ─── List Resumes ────────────────────────────────────────────────────────────
 
 @router.get("/list")
-def list_resumes(
-    db: Session = Depends(get_db),
+async def list_resumes(
     user: User = Depends(get_current_user),
 ):
     """List all resumes for the current user."""
-    resumes = (
-        db.query(Resume)
-        .filter(Resume.user_id == user.id, Resume.is_active == True)
-        .order_by(Resume.created_at.desc())
-        .all()
-    )
+    resumes = await Resume.find(
+        Resume.user_id == str(user.id), Resume.is_active == True
+    ).sort(-Resume.created_at).to_list()
 
     result = []
     for r in resumes:
-        analysis = db.query(ResumeAnalysis).filter(
-            ResumeAnalysis.resume_id == r.id
-        ).order_by(ResumeAnalysis.created_at.desc()).first()
+        analysis = await ResumeAnalysis.find(
+            ResumeAnalysis.resume_id == str(r.id)
+        ).sort(-ResumeAnalysis.created_at).first_or_none()
 
         result.append({
-            "id": r.id,
+            "id": str(r.id),
             "original_filename": r.original_filename,
             "file_size": r.file_size,
             "version": r.version,
@@ -173,24 +169,28 @@ def list_resumes(
 # ─── Get Resume Details ──────────────────────────────────────────────────────
 
 @router.get("/{resume_id}")
-def get_resume(
-    resume_id: int,
-    db: Session = Depends(get_db),
+async def get_resume(
+    resume_id: str,
     user: User = Depends(get_current_user),
 ):
     """Get resume details by ID."""
-    resume = db.query(Resume).filter(
-        Resume.id == resume_id, Resume.user_id == user.id
-    ).first()
+    try:
+        res_obj_id = PydanticObjectId(resume_id)
+    except Exception:
+        raise HTTPException(400, "Invalid resume_id format")
+
+    resume = await Resume.find_one(
+        Resume.id == res_obj_id, Resume.user_id == str(user.id)
+    )
     if not resume:
         raise HTTPException(404, "Resume not found.")
 
-    analysis = db.query(ResumeAnalysis).filter(
-        ResumeAnalysis.resume_id == resume_id
-    ).order_by(ResumeAnalysis.created_at.desc()).first()
+    analysis = await ResumeAnalysis.find(
+        ResumeAnalysis.resume_id == str(resume.id)
+    ).sort(-ResumeAnalysis.created_at).first_or_none()
 
     return {
-        "id": resume.id,
+        "id": str(resume.id),
         "original_filename": resume.original_filename,
         "file_size": resume.file_size,
         "version": resume.version,
@@ -204,15 +204,19 @@ def get_resume(
 
 @router.post("/{resume_id}/analyze")
 async def analyze_resume_endpoint(
-    resume_id: int,
+    resume_id: str,
     body: ResumeAnalysisRequest = None,
-    db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
     """Run AI analysis on a resume — parse, score, and generate feedback."""
-    resume = db.query(Resume).filter(
-        Resume.id == resume_id, Resume.user_id == user.id
-    ).first()
+    try:
+        res_obj_id = PydanticObjectId(resume_id)
+    except Exception:
+        raise HTTPException(400, "Invalid resume_id format")
+
+    resume = await Resume.find_one(
+        Resume.id == res_obj_id, Resume.user_id == str(user.id)
+    )
     if not resume:
         raise HTTPException(404, "Resume not found.")
 
@@ -235,8 +239,8 @@ async def analyze_resume_endpoint(
 
     # 4. Save analysis to DB
     analysis = ResumeAnalysis(
-        resume_id=resume_id,
-        user_id=user.id,
+        resume_id=str(resume.id),
+        user_id=str(user.id),
         skills=json.dumps(parsed.get("skills", [])),
         education=json.dumps(parsed.get("education", [])),
         experience=json.dumps(parsed.get("experience", [])),
@@ -266,31 +270,32 @@ async def analyze_resume_endpoint(
         target_role=target_role,
         target_company=target_company,
     )
-    db.add(analysis)
-    db.commit()
-    db.refresh(analysis)
+    await analysis.insert()
 
     # 5. Generate interview questions
     interview_qs = await generate_interview_questions(parsed, target_role)
 
     # Delete old questions for this resume, then insert new ones
-    db.query(ResumeInterviewQuestion).filter(
-        ResumeInterviewQuestion.resume_id == resume_id,
-        ResumeInterviewQuestion.user_id == user.id,
+    await ResumeInterviewQuestion.find(
+        ResumeInterviewQuestion.resume_id == str(resume.id),
+        ResumeInterviewQuestion.user_id == str(user.id),
     ).delete()
 
+    docs = []
     for q in interview_qs:
         db_q = ResumeInterviewQuestion(
-            resume_id=resume_id,
-            user_id=user.id,
+            resume_id=str(resume.id),
+            user_id=str(user.id),
             question_text=q.get("question_text", ""),
             category=q.get("category", "technical"),
             difficulty=q.get("difficulty", "medium"),
             source_section=q.get("source_section"),
             source_detail=q.get("source_detail"),
         )
-        db.add(db_q)
-    db.commit()
+        docs.append(db_q)
+    
+    if docs:
+        await ResumeInterviewQuestion.insert_many(docs)
 
     return {
         "analysis": _serialize_analysis(analysis),
@@ -302,21 +307,25 @@ async def analyze_resume_endpoint(
 # ─── Get Analysis Results ────────────────────────────────────────────────────
 
 @router.get("/{resume_id}/analysis")
-def get_analysis(
-    resume_id: int,
-    db: Session = Depends(get_db),
+async def get_analysis(
+    resume_id: str,
     user: User = Depends(get_current_user),
 ):
     """Get the latest analysis for a resume."""
-    resume = db.query(Resume).filter(
-        Resume.id == resume_id, Resume.user_id == user.id
-    ).first()
+    try:
+        res_obj_id = PydanticObjectId(resume_id)
+    except Exception:
+        raise HTTPException(400, "Invalid resume_id format")
+
+    resume = await Resume.find_one(
+        Resume.id == res_obj_id, Resume.user_id == str(user.id)
+    )
     if not resume:
         raise HTTPException(404, "Resume not found.")
 
-    analysis = db.query(ResumeAnalysis).filter(
-        ResumeAnalysis.resume_id == resume_id
-    ).order_by(ResumeAnalysis.created_at.desc()).first()
+    analysis = await ResumeAnalysis.find(
+        ResumeAnalysis.resume_id == str(resume.id)
+    ).sort(-ResumeAnalysis.created_at).first_or_none()
 
     if not analysis:
         raise HTTPException(404, "No analysis found. Please analyze the resume first.")
@@ -327,26 +336,30 @@ def get_analysis(
 # ─── Get Interview Questions ─────────────────────────────────────────────────
 
 @router.get("/{resume_id}/questions")
-def get_questions(
-    resume_id: int,
-    db: Session = Depends(get_db),
+async def get_questions(
+    resume_id: str,
     user: User = Depends(get_current_user),
 ):
     """Get AI-generated interview questions for a resume."""
-    resume = db.query(Resume).filter(
-        Resume.id == resume_id, Resume.user_id == user.id
-    ).first()
+    try:
+        res_obj_id = PydanticObjectId(resume_id)
+    except Exception:
+        raise HTTPException(400, "Invalid resume_id format")
+
+    resume = await Resume.find_one(
+        Resume.id == res_obj_id, Resume.user_id == str(user.id)
+    )
     if not resume:
         raise HTTPException(404, "Resume not found.")
 
-    questions = db.query(ResumeInterviewQuestion).filter(
-        ResumeInterviewQuestion.resume_id == resume_id,
-        ResumeInterviewQuestion.user_id == user.id,
-    ).all()
+    questions = await ResumeInterviewQuestion.find(
+        ResumeInterviewQuestion.resume_id == str(resume.id),
+        ResumeInterviewQuestion.user_id == str(user.id),
+    ).to_list()
 
     return [
         {
-            "id": q.id,
+            "id": str(q.id),
             "question_text": q.question_text,
             "category": q.category,
             "difficulty": q.difficulty,
@@ -360,26 +373,26 @@ def get_questions(
 # ─── Dashboard Analytics ─────────────────────────────────────────────────────
 
 @router.get("/analytics/summary")
-def resume_analytics(
-    db: Session = Depends(get_db),
+async def resume_analytics(
     user: User = Depends(get_current_user),
 ):
     """Get aggregate resume analytics for the dashboard."""
-    resumes = db.query(Resume).filter(
-        Resume.user_id == user.id, Resume.is_active == True
-    ).all()
+    resumes = await Resume.find(
+        Resume.user_id == str(user.id), Resume.is_active == True
+    ).to_list()
 
-    analyses = db.query(ResumeAnalysis).filter(
-        ResumeAnalysis.user_id == user.id
-    ).order_by(ResumeAnalysis.created_at.desc()).all()
+    analyses = await ResumeAnalysis.find(
+        ResumeAnalysis.user_id == str(user.id)
+    ).sort(-ResumeAnalysis.created_at).to_list()
 
-    total_questions = db.query(ResumeInterviewQuestion).filter(
-        ResumeInterviewQuestion.user_id == user.id
+    total_questions = await ResumeInterviewQuestion.find(
+        ResumeInterviewQuestion.user_id == str(user.id)
     ).count()
 
     # Best scores
-    best_overall = max((a.overall_score for a in analyses), default=0)
-    avg_overall = sum(a.overall_score for a in analyses) / len(analyses) if analyses else 0
+    best_overall = max((a.overall_score for a in analyses if a.overall_score is not None), default=0)
+    scores = [a.overall_score for a in analyses if a.overall_score is not None]
+    avg_overall = sum(scores) / len(scores) if scores else 0
     latest_analysis = analyses[0] if analyses else None
 
     # Score history for trend chart
@@ -413,19 +426,214 @@ def resume_analytics(
 # ─── Delete Resume ───────────────────────────────────────────────────────────
 
 @router.delete("/{resume_id}")
-def delete_resume(
-    resume_id: int,
-    db: Session = Depends(get_db),
+async def delete_resume(
+    resume_id: str,
     user: User = Depends(get_current_user),
 ):
     """Soft-delete a resume."""
-    resume = db.query(Resume).filter(
-        Resume.id == resume_id, Resume.user_id == user.id
-    ).first()
+    try:
+        res_obj_id = PydanticObjectId(resume_id)
+    except Exception:
+        raise HTTPException(400, "Invalid resume_id format")
+
+    resume = await Resume.find_one(
+        Resume.id == res_obj_id, Resume.user_id == str(user.id)
+    )
     if not resume:
         raise HTTPException(404, "Resume not found.")
 
     resume.is_active = False
-    db.commit()
+    await resume.save()
 
     return {"message": "Resume deleted successfully."}
+
+
+# ─── Optimize Resume ─────────────────────────────────────────────────────────
+
+class OptimizeRequest(BaseModel):
+    target_company: str
+    target_role: str
+    template: str = "faang"  # classic | minimal | faang | executive
+
+
+@router.post("/{resume_id}/optimize")
+async def optimize_resume_endpoint(
+    resume_id: str,
+    body: OptimizeRequest,
+    user: User = Depends(get_current_user),
+):
+    """Run AI-powered company-specific resume optimization."""
+    try:
+        res_obj_id = PydanticObjectId(resume_id)
+    except Exception:
+        raise HTTPException(400, "Invalid resume_id format")
+
+    resume = await Resume.find_one(
+        Resume.id == res_obj_id, Resume.user_id == str(user.id)
+    )
+    if not resume:
+        raise HTTPException(404, "Resume not found.")
+
+    # Load latest analysis
+    analysis = await ResumeAnalysis.find(
+        ResumeAnalysis.resume_id == str(resume.id)
+    ).sort(-ResumeAnalysis.created_at).first_or_none()
+    if not analysis:
+        raise HTTPException(400, "Please analyze this resume first before optimizing.")
+
+    # Re-parse resume text for full data
+    try:
+        text = extract_text_from_pdf(resume.file_path)
+        parsed_data = extract_resume_sections(text)
+    except Exception as e:
+        raise HTTPException(500, f"Failed to re-parse resume: {str(e)}")
+
+    # Convert analysis to dict for the optimizer
+    def _j(val, default=None):
+        if val is None: return default
+        try: return json.loads(val)
+        except: return default
+
+    original_analysis_dict = {
+        "ats_score": analysis.ats_score or 50,
+        "overall_score": analysis.overall_score or 50,
+        "technical_score": analysis.technical_score or 50,
+        "missing_sections": _j(analysis.missing_sections, []),
+        "keyword_analysis": _j(analysis.keyword_analysis, {}),
+    }
+
+    # Run Gemini optimization
+    try:
+        opt_result = await optimize_resume(
+            parsed_data=parsed_data,
+            target_company=body.target_company,
+            target_role=body.target_role,
+            original_analysis=original_analysis_dict,
+        )
+    except Exception as e:
+        raise HTTPException(500, f"Optimization failed: {str(e)}")
+
+    # Generate PDF
+    pdf_path = None
+    try:
+        pdf_path = generate_optimized_pdf(
+            optimization_data=opt_result,
+            original_parsed=parsed_data,
+            user_name=user.name or "Candidate",
+            template=body.template,
+        )
+    except Exception as e:
+        print(f"[PDF] Generation failed: {e}")
+
+    # Save to DB
+    opt_doc = ResumeOptimization(
+        resume_id=str(resume.id),
+        user_id=str(user.id),
+        target_company=body.target_company,
+        target_role=body.target_role,
+        original_ats_score=opt_result.get("original_ats_score"),
+        optimized_ats_score=opt_result.get("optimized_ats_score"),
+        original_overall_score=original_analysis_dict["overall_score"],
+        optimized_overall_score=opt_result.get("optimized_ats_score"),
+        ats_improvement=opt_result.get("ats_improvement"),
+        optimized_summary=opt_result.get("optimized_summary", ""),
+        optimized_skills=json.dumps(opt_result.get("optimized_skills", [])),
+        optimized_projects=json.dumps(opt_result.get("optimized_projects", [])),
+        optimized_experience=json.dumps(opt_result.get("optimized_experience", [])),
+        modifications=json.dumps(opt_result.get("modifications", [])),
+        added_keywords=json.dumps(opt_result.get("added_keywords", [])),
+        company_tips=json.dumps(opt_result.get("company_tips", [])),
+        pdf_path=pdf_path,
+    )
+    await opt_doc.insert()
+
+    return {
+        "optimization_id": str(opt_doc.id),
+        "company": body.target_company,
+        "role": body.target_role,
+        "original_ats_score": opt_result.get("original_ats_score"),
+        "optimized_ats_score": opt_result.get("optimized_ats_score"),
+        "ats_improvement": opt_result.get("ats_improvement"),
+        "optimized_summary": opt_result.get("optimized_summary", ""),
+        "optimized_skills": opt_result.get("optimized_skills", []),
+        "optimized_projects": opt_result.get("optimized_projects", []),
+        "optimized_experience": opt_result.get("optimized_experience", []),
+        "modifications": opt_result.get("modifications", []),
+        "added_keywords": opt_result.get("added_keywords", []),
+        "company_tips": opt_result.get("company_tips", []),
+        "optimization_summary": opt_result.get("optimization_summary", ""),
+        "company_accent": opt_result.get("company_accent", "#6c63ff"),
+        "has_pdf": pdf_path is not None,
+        "source": opt_result.get("source", "unknown"),
+    }
+
+
+# ─── List Optimization History ───────────────────────────────────────────────
+
+@router.get("/{resume_id}/optimizations")
+async def list_optimizations(
+    resume_id: str,
+    user: User = Depends(get_current_user),
+):
+    """List all optimizations for a resume."""
+    try:
+        res_obj_id = PydanticObjectId(resume_id)
+    except Exception:
+        raise HTTPException(400, "Invalid resume_id format")
+
+    resume = await Resume.find_one(
+        Resume.id == res_obj_id, Resume.user_id == str(user.id)
+    )
+    if not resume:
+        raise HTTPException(404, "Resume not found.")
+
+    opts = await ResumeOptimization.find(
+        ResumeOptimization.resume_id == str(resume.id),
+        ResumeOptimization.user_id == str(user.id),
+    ).sort(-ResumeOptimization.created_at).to_list()
+
+    return [
+        {
+            "id": str(o.id),
+            "target_company": o.target_company,
+            "target_role": o.target_role,
+            "original_ats_score": o.original_ats_score,
+            "optimized_ats_score": o.optimized_ats_score,
+            "ats_improvement": o.ats_improvement,
+            "has_pdf": o.pdf_path is not None,
+            "created_at": o.created_at.isoformat() if o.created_at else None,
+        }
+        for o in opts
+    ]
+
+
+# ─── Download Optimized PDF ──────────────────────────────────────────────────
+
+@router.get("/{resume_id}/optimization/{opt_id}/pdf")
+async def download_optimized_pdf(
+    resume_id: str,
+    opt_id: str,
+    user: User = Depends(get_current_user),
+):
+    """Download the PDF for a specific optimization."""
+    try:
+        opt_obj_id = PydanticObjectId(opt_id)
+    except Exception:
+        raise HTTPException(400, "Invalid optimization_id format")
+
+    opt = await ResumeOptimization.find_one(
+        ResumeOptimization.id == opt_obj_id,
+        ResumeOptimization.user_id == str(user.id),
+    )
+    if not opt:
+        raise HTTPException(404, "Optimization not found.")
+
+    if not opt.pdf_path or not os.path.exists(opt.pdf_path):
+        raise HTTPException(404, "PDF not available. Please re-run optimization.")
+
+    safe_name = f"resume_{opt.target_company}_{opt.target_role}.pdf".replace(" ", "_")
+    return FileResponse(
+        path=opt.pdf_path,
+        media_type="application/pdf",
+        filename=safe_name,
+    )

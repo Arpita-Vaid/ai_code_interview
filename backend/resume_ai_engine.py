@@ -12,22 +12,7 @@ try:
 except ImportError:
     HAS_PYPDF2 = False
 
-# OpenAI integration (same pattern as ai_engine.py)
-try:
-    from openai import OpenAI
-    HAS_OPENAI = True
-except ImportError:
-    HAS_OPENAI = False
-
-OPENAI_KEY = os.getenv("OPENAI_API_KEY", "")
-
-
-def _get_client():
-    """Get OpenAI client if configured."""
-    if HAS_OPENAI and OPENAI_KEY and not OPENAI_KEY.startswith("sk-your"):
-        return OpenAI(api_key=OPENAI_KEY)
-    return None
-
+from backend.gemini_service import HAS_GEMINI, generate_json_response
 
 # ─── 1. PDF Text Extraction ──────────────────────────────────────────────────
 
@@ -284,26 +269,14 @@ def _extract_technologies(text: str) -> list:
 # ─── 3. AI Resume Analysis ──────────────────────────────────────────────────
 
 async def analyze_resume(parsed_data: dict, target_role: str = None, target_company: str = None) -> dict:
-    """Analyze resume quality using OpenAI or fallback scoring."""
-    client = _get_client()
-
-    if client:
+    """Analyze resume quality using Gemini or fallback scoring."""
+    if HAS_GEMINI:
         try:
             prompt = _build_analysis_prompt(parsed_data, target_role, target_company)
-            response = client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": "You are an expert resume analyst and career coach. Always respond with valid JSON."},
-                    {"role": "user", "content": prompt}
-                ],
-                max_tokens=2000,
-                temperature=0.3,
-            )
-            text = response.choices[0].message.content.strip()
-            if "{" in text:
-                text = text[text.index("{"):text.rindex("}") + 1]
-            result = json.loads(text)
-            result["source"] = "openai"
+            system_instruction = "You are an expert resume analyst and career coach. Always respond with valid JSON."
+            
+            result = await generate_json_response(prompt, system_instruction=system_instruction)
+            result["source"] = "gemini"
             return result
         except Exception:
             pass  # Fall through to fallback
@@ -702,26 +675,15 @@ def _fallback_analysis(parsed_data: dict, target_role: str = None) -> dict:
 
 async def generate_interview_questions(parsed_data: dict, target_role: str = None) -> list:
     """Generate personalized interview questions from resume data."""
-    client = _get_client()
-
-    if client:
+    if HAS_GEMINI:
         try:
             prompt = _build_question_prompt(parsed_data, target_role)
-            response = client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": "You are a technical interviewer. Generate interview questions based on a candidate's resume. Always respond with valid JSON."},
-                    {"role": "user", "content": prompt}
-                ],
-                max_tokens=2000,
-                temperature=0.7,
-            )
-            text = response.choices[0].message.content.strip()
-            if "[" in text:
-                text = text[text.index("["):text.rindex("]") + 1]
-            questions = json.loads(text)
+            system_instruction = "You are a technical interviewer. Generate interview questions based on a candidate's resume. Always respond with valid JSON."
+            
+            questions = await generate_json_response(prompt, system_instruction=system_instruction)
+            
             for q in questions:
-                q["source"] = "openai"
+                q["source"] = "gemini"
             return questions
         except Exception:
             pass

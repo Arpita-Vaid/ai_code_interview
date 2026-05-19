@@ -15,14 +15,17 @@ class Settings(BaseSettings):
     GOOGLE_REDIRECT_URI: str = "http://localhost:8000/auth/google/callback"
 
     # Database
-    DATABASE_URL: str = "sqlite:///./auth.db"
+    MONGODB_URI: str = "mongodb://localhost:27017/aicareercoach"
 
     # App
     FRONTEND_URL: str = "http://localhost:5173"
 
+    gemini_api_key: str | None = None
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
+        extra = "ignore"
 
 
 @lru_cache()

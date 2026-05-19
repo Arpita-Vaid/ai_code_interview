@@ -1,37 +1,140 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import {
+  LayoutDashboard, Mic, Building2, Code2, FileText,
+  Brain, Activity, Map, LogOut, ChevronRight, Zap
+} from 'lucide-react';
+
+const NAV_ITEMS = [
+  { to: '/dashboard',    icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/ai-interview', icon: Mic,             label: 'AI Interview' },
+  { to: '/company-prep', icon: Building2,        label: 'Company Prep' },
+  { to: '/coding',       icon: Code2,            label: 'Coding' },
+  { to: '/resume',       icon: FileText,         label: 'Resume' },
+  { to: '/emotion',      icon: Brain,            label: 'Emotion' },
+  { to: '/confidence',   icon: Activity,         label: 'Speech' },
+  { to: '/roadmap',      icon: Map,              label: 'Roadmap' },
+];
 
 export default function Navbar() {
   const { user, logout } = useAuth();
   const loc = useLocation();
-  const isActive = (path) => loc.pathname.startsWith(path) ? 'text-white bg-white/8' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5';
+  const nav = useNavigate();
+
+  const isActive = (path) => loc.pathname.startsWith(path);
+
+  const handleLogout = () => { logout(); nav('/'); };
+
+  const initials = user ? (user.name || user.email || 'U')[0].toUpperCase() : 'U';
 
   return (
-    <nav className="flex items-center px-6 py-3 bg-black/60 border-b border-white/5 backdrop-blur-xl sticky top-0 z-50">
-      <div className="flex items-center gap-2.5">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-600 via-purple-600 to-pink-600 flex items-center justify-center text-lg">🎯</div>
-        <span className="font-bold text-base hidden sm:block">AI Interview</span>
+    <nav style={{
+      display: 'flex',
+      alignItems: 'center',
+      padding: '0 20px',
+      height: '60px',
+      background: 'rgba(8,8,15,0.85)',
+      borderBottom: '1px solid rgba(255,255,255,0.06)',
+      backdropFilter: 'blur(24px)',
+      position: 'sticky',
+      top: 0,
+      zIndex: 50,
+      gap: '8px',
+    }}>
+      {/* Logo */}
+        <Link to="/dashboard" style={{
+        display: 'flex', alignItems: 'center', gap: '10px',
+        textDecoration: 'none', marginRight: '16px', flexShrink: 0,
+      }}>
+        <div style={{
+          width: '34px', height: '34px', borderRadius: '10px',
+          background: 'linear-gradient(135deg, #6c63ff, #a855f7)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          boxShadow: '0 0 16px rgba(108,99,255,0.35)',
+        }}>
+          <Zap size={16} color="white" fill="white" />
+        </div>
+        <div>
+          <span style={{ fontWeight: 800, fontSize: '14px', color: '#f1f1f5', letterSpacing: '-0.4px', display: 'block' }}>
+            IntelliCode <span style={{ background: 'linear-gradient(90deg,#a855f7,#6c63ff)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>AI</span>
+          </span>
+        </div>
+      </Link>
+
+      {/* Nav links */}
+      <div style={{ display: 'flex', gap: '2px', flex: 1, overflowX: 'auto', scrollbarWidth: 'none' }}>
+        {NAV_ITEMS.map(({ to, icon: Icon, label }) => {
+          const active = isActive(to);
+          return (
+            <Link
+              key={to}
+              to={to}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                padding: '6px 12px', borderRadius: '8px',
+                textDecoration: 'none', fontSize: '12.5px', fontWeight: 500,
+                whiteSpace: 'nowrap', transition: 'all 0.2s ease',
+                color: active ? '#fff' : 'rgba(255,255,255,0.45)',
+                background: active ? 'rgba(108,99,255,0.18)' : 'transparent',
+                border: active ? '1px solid rgba(108,99,255,0.25)' : '1px solid transparent',
+              }}
+              onMouseEnter={e => {
+                if (!active) {
+                  e.currentTarget.style.color = 'rgba(255,255,255,0.8)';
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                }
+              }}
+              onMouseLeave={e => {
+                if (!active) {
+                  e.currentTarget.style.color = 'rgba(255,255,255,0.45)';
+                  e.currentTarget.style.background = 'transparent';
+                }
+              }}
+            >
+              <Icon size={13} />
+              {label}
+              {active && <ChevronRight size={10} style={{ opacity: 0.6 }} />}
+            </Link>
+          );
+        })}
       </div>
-      <div className="flex gap-1 ml-8 flex-1">
-        <Link to="/dashboard" className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${isActive('/dashboard')}`}>📊 Dashboard</Link>
-        <Link to="/ai-interview" className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${isActive('/ai-interview')}`}>🎤 AI Interview</Link>
-        <Link to="/coding" className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${isActive('/coding')}`}>💻 Coding</Link>
-        <Link to="/resume" className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${isActive('/resume')}`}>📄 Resume</Link>
-        <Link to="/emotion" className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${isActive('/emotion')}`}>😊 Emotion</Link>
-        <Link to="/confidence" className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${isActive('/confidence')}`}>🎙️ Speech</Link>
-      </div>
-      <div className="flex items-center gap-2.5">
-        {user && (
-          <>
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-600 to-purple-600 flex items-center justify-center text-xs font-bold">
-              {(user.name || user.email)[0].toUpperCase()}
-            </div>
-            <button onClick={logout} className="text-xs text-gray-500 hover:text-white px-3 py-1.5 rounded-lg border border-white/10 hover:border-white/20 transition-all">
-              Sign Out
-            </button>
-          </>
-        )}
-      </div>
+
+      {/* User section */}
+      {user && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0, marginLeft: '8px' }}>
+          <div style={{
+            width: '32px', height: '32px', borderRadius: '50%',
+            background: 'linear-gradient(135deg, #6c63ff, #ec4899)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '12px', fontWeight: 700, color: '#fff',
+            boxShadow: '0 0 12px rgba(108,99,255,0.3)',
+          }}>
+            {initials}
+          </div>
+          <button
+            onClick={handleLogout}
+            title="Sign Out"
+            style={{
+              display: 'flex', alignItems: 'center', gap: '5px',
+              padding: '5px 10px', borderRadius: '8px',
+              background: 'rgba(239,68,68,0.08)',
+              border: '1px solid rgba(239,68,68,0.15)',
+              color: 'rgba(239,68,68,0.7)', fontSize: '11.5px',
+              cursor: 'pointer', transition: 'all 0.2s',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = 'rgba(239,68,68,0.15)';
+              e.currentTarget.style.color = '#ef4444';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = 'rgba(239,68,68,0.08)';
+              e.currentTarget.style.color = 'rgba(239,68,68,0.7)';
+            }}
+          >
+            <LogOut size={11} /> Sign Out
+          </button>
+        </div>
+      )}
     </nav>
   );
 }

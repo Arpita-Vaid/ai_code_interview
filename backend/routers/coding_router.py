@@ -2,10 +2,9 @@
 
 import json
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
 from pydantic import BaseModel
+from typing import List, Dict, Any
 
-from backend.database import get_db
 from backend.models import User, CodingSubmission
 from backend.auth.dependencies import get_current_user
 from backend.coding_problems import PROBLEMS, DSA_ROADMAP, COMPANY_PATHS, get_problem, get_problems
@@ -30,15 +29,21 @@ def get_company_paths(current_user: User = Depends(get_current_user)):
 
 
 @router.get("/analytics")
-def coding_analytics(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    uid = current_user.id
-    bookmarks = db.query(CodingSubmission).filter(CodingSubmission.user_id == uid, CodingSubmission.status == "bookmarked").count()
-    solved_ids = set(
-        row[0] for row in
-        db.query(CodingSubmission.problem_id)
-        .filter(CodingSubmission.user_id == uid, CodingSubmission.status == "accepted")
-        .distinct().all()
-    )
+async def coding_analytics(current_user: User = Depends(get_current_user)):
+    uid = str(current_user.id)
+    
+    bookmarks = await CodingSubmission.find(
+        CodingSubmission.user_id == uid, 
+        CodingSubmission.status == "bookmarked"
+    ).count()
+    
+    solved_submissions = await CodingSubmission.find(
+        CodingSubmission.user_id == uid, 
+        CodingSubmission.status == "accepted"
+    ).to_list()
+    
+    solved_ids = set(sub.problem_id for sub in solved_submissions)
+    
     total = len(PROBLEMS)
     easy = len([p for p in PROBLEMS if p["difficulty"] == "easy"])
     medium = len([p for p in PROBLEMS if p["difficulty"] == "medium"])
@@ -64,35 +69,33 @@ def coding_analytics(current_user: User = Depends(get_current_user), db: Session
 
 
 @router.get("/bookmarks")
-def get_bookmarks(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    bms = db.query(CodingSubmission).filter(
-        CodingSubmission.user_id == current_user.id,
+async def get_bookmarks(current_user: User = Depends(get_current_user)):
+    bms = await CodingSubmission.find(
+        CodingSubmission.user_id == str(current_user.id),
         CodingSubmission.status == "bookmarked",
-    ).all()
+    ).to_list()
     ids = [b.problem_id for b in bms]
     return [p for p in [{**get_problem(pid), "bookmarked": True} for pid in ids if get_problem(pid)]]
 
 
 @router.post("/bookmark")
-def toggle_bookmark(
+async def toggle_bookmark(
     body: BookmarkRequest,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
 ):
-    existing = db.query(CodingSubmission).filter(
-        CodingSubmission.user_id == current_user.id,
+    existing = await CodingSubmission.find_one(
+        CodingSubmission.user_id == str(current_user.id),
         CodingSubmission.problem_id == body.problem_id,
         CodingSubmission.status == "bookmarked",
-    ).first()
+    )
 
     if existing:
-        db.delete(existing)
-        db.commit()
+        await existing.delete()
         return {"bookmarked": False, "message": "Bookmark removed"}
 
     prob = get_problem(body.problem_id)
     bm = CodingSubmission(
-        user_id=current_user.id,
+        user_id=str(current_user.id),
         problem_id=body.problem_id,
         problem_title=prob["title"] if prob else f"Problem {body.problem_id}",
         language="n/a",
@@ -100,37 +103,37 @@ def toggle_bookmark(
         status="bookmarked",
         score=0, passed_cases=0, total_cases=0, runtime_ms=0,
     )
-    db.add(bm)
-    db.commit()
+    await bm.insert()
     return {"bookmarked": True, "message": "Problem bookmarked"}
 
 
 # ─── Parameterized routes AFTER static ones ───────────────────────────────────
 
 @router.get("/problems")
-def list_problems(
+async def list_problems(
     category: str = "all",
     difficulty: str = "all",
     company: str = "all",
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
 ):
     problems = get_problems(category, difficulty)
     if company and company != "all":
         problems = [p for p in problems if company in p.get("companies", [])]
 
-    bookmarked_ids = set(
-        row[0] for row in
-        db.query(CodingSubmission.problem_id)
-        .filter(CodingSubmission.user_id == current_user.id, CodingSubmission.status == "bookmarked")
-        .distinct().all()
-    )
-    solved_ids = set(
-        row[0] for row in
-        db.query(CodingSubmission.problem_id)
-        .filter(CodingSubmission.user_id == current_user.id, CodingSubmission.status == "accepted")
-        .distinct().all()
-    )
+    uid = str(current_user.id)
+    
+    bookmarked_subs = await CodingSubmission.find(
+        CodingSubmission.user_id == uid, 
+        CodingSubmission.status == "bookmarked"
+    ).to_list()
+    bookmarked_ids = set(sub.problem_id for sub in bookmarked_subs)
+    
+    solved_subs = await CodingSubmission.find(
+        CodingSubmission.user_id == uid, 
+        CodingSubmission.status == "accepted"
+    ).to_list()
+    solved_ids = set(sub.problem_id for sub in solved_subs)
+    
     for p in problems:
         p["bookmarked"] = p["id"] in bookmarked_ids
         p["solved"] = p["id"] in solved_ids

@@ -5,28 +5,28 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
-from backend.database import engine, Base
+from backend.database import init_db
 from backend.routers.auth_router import router as auth_router
 from backend.routers.user_router import router as user_router
 from backend.routers.interview_router import router as interview_router
 from backend.routers.coding_router import router as coding_router
 from backend.routers.ai_interview_router import router as ai_interview_router
 from backend.routers.resume_router import router as resume_router
+from backend.routers.roadmap_router import router as roadmap_router
 from backend.config import get_settings
 
 settings = get_settings()
 
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Create all DB tables on startup
-    Base.metadata.create_all(bind=engine)
+    # Initialize MongoDB connection and Beanie ODM
+    await init_db()
     yield
 
 
 app = FastAPI(
-    title="AI Code Interview API",
-    description="Modern JWT + Google OAuth auth system with AI-powered interview platform",
+    title="IntelliCode AI API",
+    description="IntelliCode AI — AI-powered career prep platform with interviews, resume optimization, coding challenges & personalized roadmaps. Powered by Gemini AI.",
     version="2.0.0",
     lifespan=lifespan,
 )
@@ -55,12 +55,14 @@ app.include_router(interview_router)
 app.include_router(coding_router)
 app.include_router(ai_interview_router)
 app.include_router(resume_router)
+app.include_router(roadmap_router)
 
 
 @app.get("/", tags=["Health"])
 def root():
     return {
-        "message": "Auth System API is running 🚀",
+        "message": "IntelliCode AI API is running 🚀",
+        "platform": "IntelliCode AI — Smart Career Prep",
         "docs": "/docs",
         "redoc": "/redoc",
     }

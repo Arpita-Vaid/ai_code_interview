@@ -1,9 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import RedirectResponse
-from sqlalchemy.orm import Session
 import bcrypt
-
-from backend.database import get_db
 from backend.models import User
 from backend.schemas import (
     UserRegister,
@@ -39,9 +36,9 @@ def verify_password(plain: str, hashed: str) -> bool:
 # ─── Email / Password ─────────────────────────────────────────────────────────
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
-def register(payload: UserRegister, db: Session = Depends(get_db)):
+async def register(payload: UserRegister):
     """Register a new user with email and password."""
-    existing = db.query(User).filter(User.email == payload.email).first()
+    existing = await User.find_one(User.email == payload.email)
     if existing:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -53,17 +50,15 @@ def register(payload: UserRegister, db: Session = Depends(get_db)):
         name=payload.name or payload.email.split("@")[0],
         hashed_password=hash_password(payload.password),
     )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
+    await user.insert()
 
-    return create_token_pair(user.id)
+    return create_token_pair(str(user.id))
 
 
 @router.post("/login", response_model=TokenResponse)
-def login(payload: UserLogin, db: Session = Depends(get_db)):
+async def login(payload: UserLogin):
     """Login with email and password."""
-    user = db.query(User).filter(User.email == payload.email).first()
+    user = await User.find_one(User.email == payload.email)
     if not user or not user.hashed_password:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -80,7 +75,7 @@ def login(payload: UserLogin, db: Session = Depends(get_db)):
             detail="Account is deactivated",
         )
 
-    return create_token_pair(user.id)
+    return create_token_pair(str(user.id))
 
 
 @router.post("/refresh", response_model=AccessTokenResponse)
@@ -138,7 +133,7 @@ def google_login():
 
 
 @router.get("/google/callback")
-async def google_callback(code: str, db: Session = Depends(get_db)):
+async def google_callback(code: str):
     """Handle Google OAuth callback, create/login user, redirect to frontend."""
     google_user = await exchange_code_for_user_info(code)
 
@@ -151,15 +146,16 @@ async def google_callback(code: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Google did not return an email")
 
     # Find by google_id first, then fall back to email
-    user = db.query(User).filter(User.google_id == google_id).first()
+    user = await User.find_one(User.google_id == google_id)
     if not user:
-        user = db.query(User).filter(User.email == email).first()
+        user = await User.find_one(User.email == email)
 
     if user:
         # Update Google info if this is their first OAuth login
         user.google_id = google_id
         user.avatar_url = picture or user.avatar_url
         user.name = name or user.name
+        await user.save()
     else:
         # Create a new OAuth-only account
         user = User(
@@ -168,12 +164,9 @@ async def google_callback(code: str, db: Session = Depends(get_db)):
             avatar_url=picture,
             google_id=google_id,
         )
-        db.add(user)
+        await user.insert()
 
-    db.commit()
-    db.refresh(user)
-
-    tokens = create_token_pair(user.id)
+    tokens = create_token_pair(str(user.id))
 
     # Redirect to frontend dashboard with tokens as query params
     frontend_url = settings.FRONTEND_URL

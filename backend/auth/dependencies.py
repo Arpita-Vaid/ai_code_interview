@@ -1,9 +1,8 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from sqlalchemy.orm import Session
-from backend.database import get_db
 from backend.models import User
 from backend.auth.jwt_handler import verify_access_token
+from beanie import PydanticObjectId
 
 bearer_scheme = HTTPBearer()
 
@@ -13,10 +12,8 @@ _401 = HTTPException(
     headers={"WWW-Authenticate": "Bearer"},
 )
 
-
-def get_current_user(
+async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
-    db: Session = Depends(get_db),
 ) -> User:
     """
     FastAPI dependency — validates Bearer token, returns the User model.
@@ -26,7 +23,8 @@ def get_current_user(
     try:
         token = credentials.credentials
         user_id = verify_access_token(token)
-        user = db.query(User).filter(User.id == int(user_id)).first()
+        # Verify the token is a valid PydanticObjectId
+        user = await User.get(PydanticObjectId(user_id))
     except Exception:
         raise _401
 

@@ -34,7 +34,7 @@ class AccessTokenResponse(BaseModel):
 # ─── User Schemas ──────────────────────────────────────────────────────────────
 
 class UserOut(BaseModel):
-    id: int
+    id: str
     email: str
     name: Optional[str]
     avatar_url: Optional[str]
@@ -48,8 +48,8 @@ class UserOut(BaseModel):
 # ─── Resume Schemas ────────────────────────────────────────────────────────────
 
 class ResumeOut(BaseModel):
-    id: int
-    user_id: int
+    id: str
+    user_id: str
     filename: str
     original_filename: str
     file_size: int
@@ -70,8 +70,8 @@ class ResumeAnalysisRequest(BaseModel):
 
 
 class ResumeAnalysisOut(BaseModel):
-    id: int
-    resume_id: int
+    id: str
+    resume_id: str
     # Parsed data
     skills: Optional[list] = None
     education: Optional[list] = None
@@ -103,8 +103,8 @@ class ResumeAnalysisOut(BaseModel):
 
 
 class ResumeInterviewQuestionOut(BaseModel):
-    id: int
-    resume_id: int
+    id: str
+    resume_id: str
     question_text: str
     category: str
     difficulty: str

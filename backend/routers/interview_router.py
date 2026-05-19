@@ -2,14 +2,13 @@ import random
 from datetime import datetime, timezone
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from sqlalchemy import func as sqlfunc
 from pydantic import BaseModel
+from beanie import PydanticObjectId
+from beanie.operators import In
+from typing import List
 
-from backend.database import get_db
-from backend.models import Question, InterviewSession, SessionAnswer
+from backend.models import Question, InterviewSession, SessionAnswer, User
 from backend.auth.dependencies import get_current_user
-from backend.models import User
 from backend.question_bank import QUESTIONS
 
 router = APIRouter(prefix="/interview", tags=["Interview"])
@@ -20,12 +19,12 @@ DIFFICULTIES = ["easy", "medium", "hard"]
 
 # ─── DB seed helper ───────────────────────────────────────────────────────────
 
-def seed_questions(db: Session):
+async def seed_questions():
     """Seed question bank on first run if empty."""
-    if db.query(Question).count() == 0:
-        for q in QUESTIONS:
-            db.add(Question(**q))
-        db.commit()
+    count = await Question.count()
+    if count == 0:
+        docs = [Question(**q) for q in QUESTIONS]
+        await Question.insert_many(docs)
 
 
 # ─── Schemas ──────────────────────────────────────────────────────────────────
@@ -37,7 +36,7 @@ class StartSessionRequest(BaseModel):
 
 
 class SubmitAnswerRequest(BaseModel):
-    question_id: int
+    question_id: str
     user_answer: str
     time_taken: Optional[int] = None  # seconds
 
@@ -111,30 +110,30 @@ def score_answer(question: Question, user_answer: str) -> tuple[float, str]:
 # ─── Routes ───────────────────────────────────────────────────────────────────
 
 @router.get("/questions")
-def get_questions(
+async def get_questions(
     category: str = "all",
     difficulty: str = "all",
     limit: int = 5,
-    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """Fetch random questions filtered by category and difficulty."""
-    seed_questions(db)
+    await seed_questions()
 
-    query = db.query(Question)
+    filters = {}
     if category != "all":
-        query = query.filter(Question.category == category)
+        filters["category"] = category
     if difficulty != "all":
-        query = query.filter(Question.difficulty == difficulty)
+        filters["difficulty"] = difficulty
 
-    questions = query.all()
+    questions = await Question.find(filters).to_list()
+    
     if not questions:
         raise HTTPException(status_code=404, detail="No questions found for the selected filter.")
 
     sample = random.sample(questions, min(limit, len(questions)))
     return [
         {
-            "id": q.id, "text": q.text, "category": q.category,
+            "id": str(q.id), "text": q.text, "category": q.category,
             "difficulty": q.difficulty, "hint": q.hint,
         }
         for q in sample
@@ -142,13 +141,12 @@ def get_questions(
 
 
 @router.post("/sessions", status_code=201)
-def start_session(
+async def start_session(
     payload: StartSessionRequest,
-    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """Start a new interview session and return the questions."""
-    seed_questions(db)
+    await seed_questions()
 
     if payload.category not in CATEGORIES + ["all"]:
         raise HTTPException(status_code=400, detail=f"Invalid category. Choose from: {CATEGORIES}")
@@ -158,36 +156,35 @@ def start_session(
     num = max(1, min(payload.num_questions, 10))
 
     # Fetch questions
-    query = db.query(Question)
+    filters = {}
     if payload.category != "all":
-        query = query.filter(Question.category == payload.category)
+        filters["category"] = payload.category
     if payload.difficulty != "all":
-        query = query.filter(Question.difficulty == payload.difficulty)
+        filters["difficulty"] = payload.difficulty
 
-    questions = query.all()
+    questions = await Question.find(filters).to_list()
+    
     if len(questions) < 1:
         raise HTTPException(status_code=404, detail="No questions available for these filters.")
 
     selected = random.sample(questions, min(num, len(questions)))
 
     session = InterviewSession(
-        user_id=current_user.id,
+        user_id=str(current_user.id),
         category=payload.category,
         difficulty=payload.difficulty,
         num_questions=len(selected),
         status="in_progress",
     )
-    db.add(session)
-    db.commit()
-    db.refresh(session)
+    await session.insert()
 
     return {
-        "session_id": session.id,
+        "session_id": str(session.id),
         "category": session.category,
         "difficulty": session.difficulty,
         "num_questions": session.num_questions,
         "questions": [
-            {"id": q.id, "text": q.text, "category": q.category,
+            {"id": str(q.id), "text": q.text, "category": q.category,
              "difficulty": q.difficulty, "hint": q.hint}
             for q in selected
         ],
@@ -195,23 +192,28 @@ def start_session(
 
 
 @router.post("/sessions/{session_id}/answer")
-def submit_answer(
-    session_id: int,
+async def submit_answer(
+    session_id: str,
     payload: SubmitAnswerRequest,
-    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """Submit an answer to a question — returns AI score and feedback."""
-    session = db.query(InterviewSession).filter(
-        InterviewSession.id == session_id,
-        InterviewSession.user_id == current_user.id,
-    ).first()
+    try:
+        sess_obj_id = PydanticObjectId(session_id)
+        q_obj_id = PydanticObjectId(payload.question_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid session_id or question_id format")
+
+    session = await InterviewSession.find_one(
+        InterviewSession.id == sess_obj_id,
+        InterviewSession.user_id == str(current_user.id),
+    )
     if not session:
         raise HTTPException(status_code=404, detail="Session not found.")
     if session.status == "completed":
         raise HTTPException(status_code=400, detail="Session already completed.")
 
-    question = db.query(Question).filter(Question.id == payload.question_id).first()
+    question = await Question.get(q_obj_id)
     if not question:
         raise HTTPException(status_code=404, detail="Question not found.")
 
@@ -221,19 +223,17 @@ def submit_answer(
     score, feedback = score_answer(question, payload.user_answer)
 
     answer = SessionAnswer(
-        session_id=session_id,
-        question_id=payload.question_id,
+        session_id=str(session.id),
+        question_id=str(question.id),
         user_answer=payload.user_answer,
         ai_score=score,
         ai_feedback=feedback,
         time_taken=payload.time_taken,
     )
-    db.add(answer)
-    db.commit()
-    db.refresh(answer)
+    await answer.insert()
 
     return {
-        "answer_id": answer.id,
+        "answer_id": str(answer.id),
         "ai_score": score,
         "ai_feedback": feedback,
         "question": {"text": question.text, "sample_answer": question.sample_answer},
@@ -241,20 +241,24 @@ def submit_answer(
 
 
 @router.post("/sessions/{session_id}/finish")
-def finish_session(
-    session_id: int,
-    db: Session = Depends(get_db),
+async def finish_session(
+    session_id: str,
     current_user: User = Depends(get_current_user),
 ):
     """Mark session as complete, compute total score."""
-    session = db.query(InterviewSession).filter(
-        InterviewSession.id == session_id,
-        InterviewSession.user_id == current_user.id,
-    ).first()
+    try:
+        sess_obj_id = PydanticObjectId(session_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid session_id format")
+
+    session = await InterviewSession.find_one(
+        InterviewSession.id == sess_obj_id,
+        InterviewSession.user_id == str(current_user.id),
+    )
     if not session:
         raise HTTPException(status_code=404, detail="Session not found.")
 
-    answers = db.query(SessionAnswer).filter(SessionAnswer.session_id == session_id).all()
+    answers = await SessionAnswer.find(SessionAnswer.session_id == session_id).to_list()
     if not answers:
         raise HTTPException(status_code=400, detail="No answers submitted yet.")
 
@@ -262,11 +266,10 @@ def finish_session(
     session.total_score = avg_score
     session.status = "completed"
     session.finished_at = datetime.now(timezone.utc)
-    db.commit()
-    db.refresh(session)
+    await session.save()
 
     return {
-        "session_id": session_id,
+        "session_id": str(session.id),
         "total_score": avg_score,
         "num_answered": len(answers),
         "answers": [
@@ -277,25 +280,19 @@ def finish_session(
 
 
 @router.get("/sessions")
-def get_sessions(
+async def get_sessions(
     limit: int = 20,
-    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """Get user's session history."""
-    sessions = (
-        db.query(InterviewSession)
-        .filter(
-            InterviewSession.user_id == current_user.id,
-            InterviewSession.status == "completed",
-        )
-        .order_by(InterviewSession.created_at.desc())
-        .limit(limit)
-        .all()
-    )
+    sessions = await InterviewSession.find(
+        InterviewSession.user_id == str(current_user.id),
+        InterviewSession.status == "completed",
+    ).sort(-InterviewSession.created_at).limit(limit).to_list()
+
     return [
         {
-            "id": s.id, "category": s.category, "difficulty": s.difficulty,
+            "id": str(s.id), "category": s.category, "difficulty": s.difficulty,
             "total_score": s.total_score, "num_questions": s.num_questions,
             "created_at": s.created_at.isoformat() if s.created_at else None,
         }
@@ -304,28 +301,35 @@ def get_sessions(
 
 
 @router.get("/analytics")
-def get_analytics(
-    db: Session = Depends(get_db),
+async def get_analytics(
     current_user: User = Depends(get_current_user),
 ):
     """Aggregated analytics data for Chart.js dashboard."""
-    seed_questions(db)
-    uid = current_user.id
+    await seed_questions()
+    uid = str(current_user.id)
 
-    sessions = (
-        db.query(InterviewSession)
-        .filter(InterviewSession.user_id == uid, InterviewSession.status == "completed")
-        .order_by(InterviewSession.created_at.asc())
-        .all()
-    )
+    sessions = await InterviewSession.find(
+        InterviewSession.user_id == uid, 
+        InterviewSession.status == "completed"
+    ).sort(InterviewSession.created_at).to_list()
 
-    answers = (
-        db.query(SessionAnswer, Question)
-        .join(Question, SessionAnswer.question_id == Question.id)
-        .join(InterviewSession, SessionAnswer.session_id == InterviewSession.id)
-        .filter(InterviewSession.user_id == uid)
-        .all()
-    )
+    answers = await SessionAnswer.find(
+        In(SessionAnswer.session_id, [str(s.id) for s in sessions]) if sessions else {"_id": None}
+    ).to_list()
+    
+    # We need to emulate the join manually.
+    # Group answers by session ID
+    session_dict = {str(s.id): s for s in sessions}
+    
+    q_ids = [a.question_id for a in answers]
+    # In Beanie we can't easily fetch multiple IDs from list of strings without casting
+    try:
+        q_obj_ids = [PydanticObjectId(q_id) for q_id in set(q_ids)]
+        questions = await Question.find({"_id": {"$in": q_obj_ids}}).to_list()
+    except:
+        questions = []
+        
+    q_dict = {str(q.id): q for q in questions}
 
     # ── Stat cards ────────────────────────────────────────
     total_sessions = len(sessions)
@@ -342,9 +346,11 @@ def get_analytics(
 
     # ── Radar — avg score per category ───────────────────
     cat_scores: dict[str, list] = {c: [] for c in CATEGORIES}
-    for ans, q in answers:
-        if q.category in cat_scores:
+    for ans in answers:
+        q = q_dict.get(ans.question_id)
+        if q and q.category in cat_scores:
             cat_scores[q.category].append(ans.ai_score)
+            
     radar = {
         "labels": [c.replace("_", " ").title() for c in CATEGORIES],
         "scores": [
@@ -355,9 +361,11 @@ def get_analytics(
 
     # ── Doughnut — questions attempted per category ───────
     cat_counts = {c: 0 for c in CATEGORIES}
-    for ans, q in answers:
-        if q.category in cat_counts:
+    for ans in answers:
+        q = q_dict.get(ans.question_id)
+        if q and q.category in cat_counts:
             cat_counts[q.category] += 1
+            
     doughnut = {
         "labels": [c.replace("_", " ").title() for c in CATEGORIES],
         "counts": list(cat_counts.values()),
@@ -366,7 +374,7 @@ def get_analytics(
     # ── Bar — score distribution (bands of 20) ────────────
     bands = ["0-20", "20-40", "40-60", "60-80", "80-100"]
     band_counts = [0, 0, 0, 0, 0]
-    for ans, _ in answers:
+    for ans in answers:
         idx = min(int(ans.ai_score // 20), 4)
         band_counts[idx] += 1
     distribution = {"labels": bands, "counts": band_counts}
@@ -386,7 +394,7 @@ def get_analytics(
     # ── Recent sessions ───────────────────────────────────
     recent = [
         {
-            "id": s.id,
+            "id": str(s.id),
             "category": s.category.replace("_", " ").title(),
             "difficulty": s.difficulty.title(),
             "score": round(s.total_score, 1) if s.total_score else 0,

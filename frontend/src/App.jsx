@@ -5,6 +5,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import InterviewLobby from './pages/InterviewLobby';
+import CompanySelection from './pages/CompanySelection';
 import AIInterviewRoom from './pages/AIInterviewRoom';
 import CodingProblems from './pages/CodingProblems';
 
@@ -12,6 +13,7 @@ import EmotionDetection from './pages/EmotionDetection';
 import ResumeUpload from './pages/ResumeUpload';
 import ResumeAnalysis from './pages/ResumeAnalysis';
 import ConfidenceAnalysis from './pages/ConfidenceAnalysis';
+import Roadmap from './pages/Roadmap';
 
 function AppRoutes() {
   const { user, loading } = useAuth();
@@ -28,6 +30,7 @@ function AppRoutes() {
       <Route path="/register" element={user ? <Navigate to="/dashboard" /> : <Register />} />
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/ai-interview" element={<ProtectedRoute><InterviewLobby /></ProtectedRoute>} />
+      <Route path="/company-prep" element={<ProtectedRoute><CompanySelection /></ProtectedRoute>} />
       <Route path="/ai-interview/:roundType" element={<ProtectedRoute><AIInterviewRoom /></ProtectedRoute>} />
       <Route path="/coding" element={<ProtectedRoute><CodingProblems /></ProtectedRoute>} />
 
@@ -35,6 +38,7 @@ function AppRoutes() {
       <Route path="/confidence" element={<ProtectedRoute><ConfidenceAnalysis /></ProtectedRoute>} />
       <Route path="/resume" element={<ProtectedRoute><ResumeUpload /></ProtectedRoute>} />
       <Route path="/resume/:id/analysis" element={<ProtectedRoute><ResumeAnalysis /></ProtectedRoute>} />
+      <Route path="/roadmap" element={<ProtectedRoute><Roadmap /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>
   );
