@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     MONGODB_URI: str = "mongodb+srv://arpitavaid6_db_user:S8gwLFMzygf7Rmc9@cluster0.lqrwci5.mongodb.net/?appName=Cluster0"
 
     # App
-    FRONTEND_URL: str = "http://localhost:5173"
+    FRONTEND_URL: str = "https://ai-code-interview-frontend.onrender.com"
 
     gemini_api_key: str | None = None
 
