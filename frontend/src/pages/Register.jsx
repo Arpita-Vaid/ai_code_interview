@@ -34,6 +34,8 @@ export default function Register() {
     setLoading(true); setError('');
     try {
       const data = await apiPost('/auth/register', { email, password, name });
+      localStorage.setItem('access_token', data.access_token);
+      localStorage.setItem('refresh_token', data.refresh_token);
       const me = await (await authFetch('/users/me')).json();
       login(data.access_token, data.refresh_token, me);
       nav('/dashboard');
