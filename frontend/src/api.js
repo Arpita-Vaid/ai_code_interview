@@ -1,4 +1,4 @@
-const API = 'http://localhost:8000';
+const API = import.meta.env.VITE_API_URL || 'https://ai-code-interview.onrender.com';
 
 export function getAccessToken()  { return localStorage.getItem('access_token'); }
 export function getRefreshToken() { return localStorage.getItem('refresh_token'); }
