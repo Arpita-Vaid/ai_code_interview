@@ -36,7 +36,15 @@ export async function apiPost(path, body) {
       body: JSON.stringify(body),
     });
   } catch { throw new Error('Cannot connect to server.'); }
-  const data = await res.json();
+  
+  let data;
+  const text = await res.text();
+  try {
+    data = JSON.parse(text);
+  } catch {
+    data = { detail: text ? `Server returned non-JSON: ${text.slice(0, 50)}...` : 'Empty response from server' };
+  }
+  
   if (!res.ok) throw new Error(data.detail || `Error (${res.status})`);
   return data;
 }
