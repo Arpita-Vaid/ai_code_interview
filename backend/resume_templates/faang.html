@@ -16,208 +16,204 @@
   margin: 18mm;
 }
 
-*{
-  margin:0;
-  padding:0;
-  box-sizing:border-box;
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
-body{
-  font-family:'Inter',sans-serif;
-  background:#ffffff;
-  color:#111827;
-  line-height:1.6;
-  padding:40px;
-  font-size:11pt;
+body {
+  font-family: 'Inter', sans-serif;
+  background: #ffffff;
+  color: #111827;
+  line-height: 1.6;
+  padding: 24px;
+  font-size: 11pt;
 }
 
-/* ================= HEADER ================= */
-
-.header{
-  border-bottom:2px solid #2563eb;
-  padding-bottom:20px;
-  margin-bottom:28px;
+.header {
+  padding-bottom: 14px;
+  margin-bottom: 20px;
 }
 
-.name{
-  font-size:34px;
-  font-weight:800;
-  color:#111827;
-  letter-spacing:-1px;
-  margin-bottom:4px;
+.name {
+  font-size: 32px;
+  font-weight: 800;
+  color: #111827;
+  letter-spacing: -0.8px;
+  margin-bottom: 8px;
 }
 
-.role{
-  font-size:16px;
-  color:#2563eb;
-  font-weight:600;
-  margin-bottom:12px;
+.role {
+  font-size: 14px;
+  color: #111827;
+  font-weight: 600;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #111827;
 }
 
-.contact{
-  font-size:13px;
-  color:#4b5563;
-  display:flex;
-  flex-wrap:wrap;
-  gap:14px;
+.contact {
+  font-size: 12.5px;
+  color: #4b5563;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #111827;
 }
 
-.contact span{
-  display:flex;
-  align-items:center;
-  gap:4px;
+.contact span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
 }
 
-/* ================= SECTION ================= */
-
-.section{
-  margin-bottom:28px;
+.section {
+  margin-bottom: 26px;
 }
 
-.section-title{
-  font-size:15px;
-  font-weight:700;
-  color:#111827;
-  margin-bottom:14px;
-  padding-bottom:6px;
-  border-bottom:2px solid #dbeafe;
-  text-transform:uppercase;
-  letter-spacing:0.5px;
+.section-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #111827;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
-/* ================= SUMMARY ================= */
-
-.summary{
-  color:#374151;
-  font-size:14px;
-  line-height:1.7;
+.section + .section {
+  margin-top: 10px;
 }
 
-/* ================= SKILLS ================= */
-
-.skills-grid{
-  display:grid;
-  grid-template-columns:160px 1fr;
-  row-gap:10px;
+.summary,
+.skill-items,
+li,
+.cgpa,
+.tech-stack,
+.company,
+.subtitle {
+  color: #334155;
 }
 
-.skill-category{
-  font-weight:700;
-  color:#111827;
+.summary {
+  font-size: 13.2px;
+  line-height: 1.75;
 }
 
-.skill-items{
-  color:#374151;
-  line-height:1.7;
+.skills-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(120px, 1fr));
+  gap: 10px 20px;
 }
 
-/* ================= EXPERIENCE / PROJECTS ================= */
-
-.card{
-  padding:16px 18px;
-  border:1px solid #e5e7eb;
-  border-radius:12px;
-  margin-bottom:18px;
-  background:#fafafa;
+.skill-category {
+  font-weight: 700;
+  color: #111827;
 }
 
-.card-header{
-  display:flex;
-  justify-content:space-between;
-  align-items:flex-start;
-  margin-bottom:6px;
+.skill-items {
+  line-height: 1.7;
 }
 
-.title{
-  font-size:16px;
-  font-weight:700;
-  color:#111827;
+.card {
+  padding: 12px 0;
+  border-bottom: 1px solid #d1d5db;
+  margin-bottom: 16px;
 }
 
-.date{
-  color:#6b7280;
-  font-size:13px;
-  font-weight:500;
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 6px;
 }
 
-.company{
-  color:#2563eb;
-  font-weight:600;
-  margin-bottom:8px;
+.title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111827;
 }
 
-.tech-stack{
-  font-size:13px;
-  color:#4b5563;
-  margin-bottom:10px;
+.subtitle {
+  font-size: 13.4px;
+  font-weight: 600;
+  margin-top: 3px;
 }
 
-.tech-stack span{
-  font-weight:600;
+.date {
+  color: #475569;
+  font-size: 12.7px;
+  font-weight: 500;
 }
 
-ul{
-  padding-left:20px;
+.company,
+.college {
+  color: #111827;
+  font-weight: 700;
+  margin-bottom: 4px;
 }
 
-li{
-  margin-bottom:8px;
-  color:#374151;
-  line-height:1.6;
+.tech-stack {
+  font-size: 13px;
+  margin-bottom: 10px;
 }
 
-/* ================= EDUCATION ================= */
-
-.edu-card{
-  display:flex;
-  justify-content:space-between;
-  align-items:flex-start;
+.tech-stack span {
+  font-weight: 600;
 }
 
-.degree{
-  font-weight:700;
-  font-size:15px;
+ul {
+  padding-left: 18px;
 }
 
-.college{
-  color:#2563eb;
-  margin-top:3px;
+li {
+  margin-bottom: 8px;
+  line-height: 1.65;
 }
 
-.cgpa{
-  margin-top:5px;
-  color:#374151;
+.edu-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
 }
 
-/* ================= FOOTER ================= */
-
-.footer{
-  margin-top:30px;
-  padding-top:14px;
-  border-top:1px solid #e5e7eb;
-  text-align:center;
-  font-size:12px;
-  color:#6b7280;
+.degree {
+  font-weight: 700;
+  font-size: 14px;
 }
 
-/* ================= RESPONSIVE ================= */
+.cgpa {
+  margin-top: 4px;
+}
 
-@media(max-width:700px){
+.footer {
+  margin-top: 30px;
+  padding-top: 14px;
+  border-top: 1px solid #d1d5db;
+  text-align: center;
+  font-size: 11.5px;
+  color: #64748b;
+}
 
-  body{
-    padding:24px;
+@media (max-width: 700px) {
+  body {
+    padding: 20px;
   }
 
   .card-header,
-  .edu-card{
-    flex-direction:column;
-    gap:6px;
+  .edu-card {
+    flex-direction: column;
   }
 
-  .skills-grid{
-    grid-template-columns:1fr;
+  .skills-grid {
+    grid-template-columns: 1fr;
   }
-
 }
 
 </style>
@@ -318,9 +314,7 @@ li{
 
     <div class="card-header">
 
-      <div>
-        <div class="title">{{ exp.title }}</div>
-
+      <div class="company-row">
         {% if exp.company %}
         <div class="company">{{ exp.company }}</div>
         {% endif %}
@@ -331,6 +325,10 @@ li{
       </div>
 
     </div>
+
+    {% if exp.title %}
+    <div class="title">{{ exp.title }}</div>
+    {% endif %}
 
     {% if exp.tech %}
     <div class="tech-stack">
