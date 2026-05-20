@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     GOOGLE_REDIRECT_URI: str = "https://ai-code-interview.onrender.com/auth/google/callback"
 
     # Database
-    MONGODB_URI: str = "mongodb+srv://arpitavaid6_db_user:S8gwLFMzygf7Rmc9@cluster0.lqrwci5.mongodb.net/?appName=Cluster0"
+    MONGODB_URI: str = ""
 
     # App
     FRONTEND_URL: str = "https://ai-code-interview-frontend.onrender.com"
