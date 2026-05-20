@@ -15,7 +15,12 @@ export async function authFetch(url, opts = {}) {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refresh_token: getRefreshToken() }),
     });
-    if (!ref.ok) { clearTokens(); window.location.href = '/'; return res; }
+    if (!ref.ok) { 
+      alert(`Token refresh failed (Status: ${ref.status}). Redirecting to login.`);
+      clearTokens(); 
+      window.location.href = '/'; 
+      return res; 
+    }
     const { access_token } = await ref.json();
     localStorage.setItem('access_token', access_token);
     return authFetch(url, opts);

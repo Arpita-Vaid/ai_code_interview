@@ -21,8 +21,14 @@ export function AuthProvider({ children }) {
     if (!getAccessToken()) { setLoading(false); return; }
     authFetch('/users/me').then(async (res) => {
       if (res.ok) setUser(await res.json());
-      else clearTokens();
-    }).catch(() => clearTokens()).finally(() => setLoading(false));
+      else {
+        alert(`Login failed: /users/me returned status ${res.status}. Check API URL or CORS.`);
+        clearTokens();
+      }
+    }).catch((err) => {
+      alert(`Network error during login verification: ${err.message}. This is likely a CORS or connection issue.`);
+      clearTokens();
+    }).finally(() => setLoading(false));
   }, []);
 
   const login = (access, refresh, userData) => {
