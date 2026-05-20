@@ -51,7 +51,6 @@ yarn-debug.log*
 yarn-error.log*
 
 # ─── Project-specific ───────────────────────────────────
-frontend_old/
 *.pyc
 
 auth.db
