@@ -169,7 +169,7 @@ async def google_callback(code: str):
     tokens = create_token_pair(str(user.id))
 
     # Redirect to frontend dashboard with tokens as query params
-    frontend_url = settings.FRONTEND_URL
+    frontend_url = settings.FRONTEND_URL.rstrip('/')
     redirect = (
         f"{frontend_url}/dashboard"
         f"?access_token={tokens['access_token']}"
