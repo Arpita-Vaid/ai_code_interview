@@ -3,6 +3,13 @@
 > A full-stack AI-powered interview preparation platform built with FastAPI, React, and Google Gemini.
 
 ---
+## 🌐 Live Demo
+
+Frontend: https://ai-code-interview-frontend.onrender.com
+
+Backend API: https://ai-code-interview.onrender.com
+
+API Docs: https://ai-code-interview.onrender.com/docs
 
 ## 🚀 What it does
 
@@ -23,7 +30,7 @@
 - Roadmap Generation: personalized study plans for interview readiness
 - Auth & User Management: secure login, registration, and JWT token flow
 - MongoDB Storage: store users, resumes, and session data
-- AI Job Matching Engine: recomends suitable job roles,company fit percentage,salary estimation and skill gap       analysis using AI
+- AI Job Matching Engine: recommends suitable job roles, company fit percentage, salary estimation and skill gap       analysis using AI
 
 ---
 
@@ -73,7 +80,7 @@ pip install -r requirements.txt
 Create a `.env` file in the project root with values such as:
 
 ```env
-MONGODB_URI=mongodb://localhost:27017/ai_code_interview
+MONGODB_URI=your_mongodb_atlas_uri
 SECRET_KEY=your_super_secret_key
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
@@ -157,13 +164,18 @@ ai_code_interview/
 
 ---
 
-## 🧪 Tests
 
-- `test_templates.py` - template validation
-- `test_pdf_gen.py` - PDF generation tests
 
 ---
 
 ## 📄 License
 
 MIT License
+
+
+## ☁️ Deployment
+
+- Frontend deployed on Render Static Site
+- Backend deployed on Render Web Service
+- Database hosted on MongoDB Atlas
+- Authentication powered by Google OAuth
