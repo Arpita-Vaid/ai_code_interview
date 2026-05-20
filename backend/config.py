@@ -12,10 +12,10 @@ class Settings(BaseSettings):
     # Google OAuth
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
-    GOOGLE_REDIRECT_URI: str = "http://localhost:8000/auth/google/callback"
+    GOOGLE_REDIRECT_URI=https://ai-code-interview.onrender.com/auth/google/callback
 
     # Database
-    MONGODB_URI: str = "mongodb://localhost:27017/aicareercoach"
+    MONGODB_URI: str = "mongodb+srv://arpitavaid6_db_user:S8gwLFMzygf7Rmc9@cluster0.lqrwci5.mongodb.net/?appName=Cluster0"
 
     # App
     FRONTEND_URL: str = "http://localhost:5173"
