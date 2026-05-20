@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
 from beanie import PydanticObjectId
 
@@ -22,7 +22,11 @@ from backend.resume_ai_engine import (
     generate_interview_questions,
 )
 from backend.resume_optimizer import optimize_resume
-from backend.resume_pdf_generator import generate_optimized_pdf
+from backend.resume_pdf_generator import (
+    generate_optimized_pdf,
+    render_resume_html,
+    build_resume_context,
+)
 
 router = APIRouter(prefix="/resume", tags=["Resume Analysis"])
 
@@ -637,3 +641,83 @@ async def download_optimized_pdf(
         media_type="application/pdf",
         filename=safe_name,
     )
+
+
+# ─── Preview Optimized Resume as HTML ──────────────────────────────────────
+
+
+@router.get("/{resume_id}/optimization/{opt_id}/preview", response_class=HTMLResponse)
+async def preview_optimized_resume(
+    resume_id: str,
+    opt_id: str,
+    user: User = Depends(get_current_user),
+):
+    """Return the rendered resume HTML for live preview (iframe embedding).
+
+    Reads the stored optimization data and re-renders it using the same Jinja2
+    template so the frontend can embed it as an iframe without generating a PDF.
+    """
+    try:
+        opt_obj_id = PydanticObjectId(opt_id)
+    except Exception:
+        raise HTTPException(400, "Invalid optimization_id format")
+
+    opt = await ResumeOptimization.find_one(
+        ResumeOptimization.id == opt_obj_id,
+        ResumeOptimization.user_id == str(user.id),
+    )
+    if not opt:
+        raise HTTPException(404, "Optimization not found.")
+
+    # Re-load the origial resume to rebuild context
+    try:
+        res_obj_id = PydanticObjectId(resume_id)
+    except Exception:
+        raise HTTPException(400, "Invalid resume_id format")
+
+    resume = await Resume.find_one(
+        Resume.id == res_obj_id, Resume.user_id == str(user.id)
+    )
+    if not resume:
+        raise HTTPException(404, "Resume not found.")
+
+    # Re-parse PDF text
+    try:
+        text = extract_text_from_pdf(resume.file_path)
+        original_parsed = extract_resume_sections(text)
+    except Exception as exc:
+        raise HTTPException(500, f"Failed to re-parse resume: {exc}")
+
+    # Reconstruct optimization_data from stored DB fields
+    def _j(val, default=None):
+        if val is None:
+            return default
+        try:
+            return json.loads(val)
+        except Exception:
+            return default
+
+    optimization_data = {
+        "company":              opt.target_company,
+        "role":                 opt.target_role,
+        "optimized_summary":    opt.optimized_summary or "",
+        "optimized_skills":     _j(opt.optimized_skills, []),
+        "optimized_projects":   _j(opt.optimized_projects, []),
+        "optimized_experience": _j(opt.optimized_experience, []),
+    }
+
+    # Determine template from the PDF filename (stored in opt.pdf_path)
+    template = "classic"
+    if opt.pdf_path:
+        for key in ["faang", "classic", "minimal", "executive"]:
+            if f"_{key}_" in opt.pdf_path:
+                template = key
+                break
+
+    ctx = build_resume_context(
+        optimization_data=optimization_data,
+        original_parsed=original_parsed,
+        user_name=user.name or "Candidate",
+    )
+    html_content = render_resume_html(ctx, template)
+    return HTMLResponse(content=html_content, status_code=200)

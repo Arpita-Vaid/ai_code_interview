@@ -14,6 +14,7 @@ import ResumeUpload from './pages/ResumeUpload';
 import ResumeAnalysis from './pages/ResumeAnalysis';
 import ConfidenceAnalysis from './pages/ConfidenceAnalysis';
 import Roadmap from './pages/Roadmap';
+import JobMatching from './pages/JobMatching';
 
 function AppRoutes() {
   const { user, loading } = useAuth();
@@ -39,6 +40,7 @@ function AppRoutes() {
       <Route path="/resume" element={<ProtectedRoute><ResumeUpload /></ProtectedRoute>} />
       <Route path="/resume/:id/analysis" element={<ProtectedRoute><ResumeAnalysis /></ProtectedRoute>} />
       <Route path="/roadmap" element={<ProtectedRoute><Roadmap /></ProtectedRoute>} />
+      <Route path="/job-matching" element={<ProtectedRoute><JobMatching /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>
   );

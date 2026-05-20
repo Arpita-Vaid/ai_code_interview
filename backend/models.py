@@ -205,9 +205,38 @@ class ResumeOptimization(Document):
         name = "resume_optimizations"
         indexes = ["resume_id", "user_id"]
 
+class JobMatchReport(Document):
+    user_id: str
+    resume_id: str
+    target_role: Optional[str] = None
+    report_data: Optional[str] = None          # JSON blob of full report
+    top_match_company: Optional[str] = None
+    top_match_score: Optional[float] = None
+    hiring_probability: Optional[float] = None
+    source: str = "fallback"
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+    class Settings:
+        name = "job_match_reports"
+        indexes = ["user_id"]
+
+
+class SavedCompany(Document):
+    user_id: str
+    company_name: str
+    role: Optional[str] = None
+    fit_score: Optional[float] = None
+    saved_at: datetime = Field(default_factory=datetime.utcnow)
+
+    class Settings:
+        name = "saved_companies"
+        indexes = ["user_id"]
+
+
 __beanie_models__ = [
     User, Question, InterviewSession, SessionAnswer, CodingSubmission,
     AIInterviewSession, AIInterviewMessage, Resume, ResumeAnalysis,
-    ResumeInterviewQuestion, ResumeOptimization
+    ResumeInterviewQuestion, ResumeOptimization,
+    JobMatchReport, SavedCompany,
 ]
 

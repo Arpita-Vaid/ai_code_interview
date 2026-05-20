@@ -45,6 +45,11 @@ export default function ResumeAnalysis() {
   const [optHistory, setOptHistory] = useState([]);
   const [optTab, setOptTab] = useState('original');
   const [optError, setOptError] = useState('');
+  // Preview state
+  const [previewHtml, setPreviewHtml] = useState('');
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewZoom, setPreviewZoom] = useState(0.65);
 
   useEffect(() => {
     Promise.all([
@@ -82,6 +87,21 @@ export default function ResumeAnalysis() {
       a.href = url; a.download = `resume_optimized_${optId}.pdf`; a.click();
       URL.revokeObjectURL(url);
     } catch { alert('Download failed.'); }
+  };
+
+  const loadPreview = async (optId) => {
+    setPreviewLoading(true);
+    setShowPreview(true);
+    try {
+      const res = await authFetch(`/resume/${id}/optimization/${optId}/preview`);
+      if (!res.ok) { setPreviewHtml('<p style="color:red;padding:20px">Preview failed to load.</p>'); return; }
+      const html = await res.text();
+      setPreviewHtml(html);
+    } catch {
+      setPreviewHtml('<p style="color:red;padding:20px">Preview error.</p>');
+    } finally {
+      setPreviewLoading(false);
+    }
   };
 
   const reanalyze = async () => {
@@ -439,9 +459,22 @@ export default function ResumeAnalysis() {
                   </button>
                 ))}
                 {optResult.has_pdf && (
-                  <button onClick={() => downloadPDF(optResult.optimization_id)}
-                    className="ml-auto px-4 py-1.5 rounded-lg text-xs font-semibold btn-gradient flex items-center gap-1.5">📥 Download PDF</button>
-                )}
+                <button onClick={() => downloadPDF(optResult.optimization_id)}
+                  className="ml-auto px-4 py-1.5 rounded-lg text-xs font-semibold btn-gradient flex items-center gap-1.5">📥 Download PDF</button>
+              )}
+              <button
+                onClick={() => {
+                  if (showPreview) { setShowPreview(false); }
+                  else { loadPreview(optResult.optimization_id); }
+                }}
+                className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                  showPreview
+                    ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30'
+                    : 'bg-white/5 text-gray-400 hover:text-white border border-white/10'
+                }`}
+              >
+                {showPreview ? '🙈 Hide Preview' : '👁 Live Preview'}
+              </button>
               </div>
 
               {optTab === 'original' ? (
@@ -478,6 +511,78 @@ export default function ResumeAnalysis() {
                 </div>
               )}
             </div>
+
+            {/* ── Live Preview Panel ── */}
+            {showPreview && (
+              <div className="glass-card p-4 mb-4 animate-slide-up">
+                {/* Preview controls */}
+                <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+                  <h3 className="text-sm font-bold">👁 Live Resume Preview</h3>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-500">Zoom:</span>
+                    {[0.5, 0.65, 0.8, 1.0].map(z => (
+                      <button
+                        key={z}
+                        onClick={() => setPreviewZoom(z)}
+                        className={`px-2 py-0.5 rounded text-xs font-medium transition-all ${
+                          previewZoom === z
+                            ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30'
+                            : 'text-gray-500 hover:text-gray-300 bg-white/5'
+                        }`}
+                      >
+                        {Math.round(z * 100)}%
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => setShowPreview(false)}
+                      className="ml-2 text-gray-500 hover:text-white text-xs px-2 py-0.5 rounded bg-white/5"
+                    >
+                      ✕ Close
+                    </button>
+                  </div>
+                </div>
+
+                {/* Preview frame */}
+                <div
+                  style={{
+                    background: '#f8fafc',
+                    borderRadius: '8px',
+                    overflow: 'hidden',
+                    height: `${Math.round(842 * previewZoom)}px`,
+                    position: 'relative',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                  }}
+                >
+                  {previewLoading ? (
+                    <div style={{
+                      position: 'absolute', inset: 0, display: 'flex',
+                      alignItems: 'center', justifyContent: 'center',
+                      background: '#f8fafc', flexDirection: 'column', gap: '12px'
+                    }}>
+                      <div className="w-8 h-8 border-2 border-violet-500/30 border-t-violet-500 rounded-full loader-spin" />
+                      <p style={{ color: '#6b7280', fontSize: '13px' }}>Rendering resume…</p>
+                    </div>
+                  ) : (
+                    <iframe
+                      srcDoc={previewHtml}
+                      title="Resume Preview"
+                      style={{
+                        width: `${Math.round(100 / previewZoom)}%`,
+                        height: `${Math.round(100 / previewZoom)}%`,
+                        border: 'none',
+                        transform: `scale(${previewZoom})`,
+                        transformOrigin: 'top left',
+                        background: '#ffffff',
+                      }}
+                      sandbox="allow-same-origin"
+                    />
+                  )}
+                </div>
+                <p className="text-[10px] text-gray-600 mt-2 text-center">
+                  This is a live HTML preview. The downloaded PDF may vary slightly by renderer.
+                </p>
+              </div>
+            )}
 
             {/* Modifications Highlight */}
             {optResult.modifications?.length > 0 && (

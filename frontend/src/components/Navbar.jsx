@@ -2,7 +2,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, Mic, Building2, Code2, FileText,
-  Brain, Activity, Map, LogOut, ChevronRight, Zap
+  Brain, Activity, Map, Target, LogOut, ChevronRight, Zap
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -13,7 +13,8 @@ const NAV_ITEMS = [
   { to: '/resume',       icon: FileText,         label: 'Resume' },
   { to: '/emotion',      icon: Brain,            label: 'Emotion' },
   { to: '/confidence',   icon: Activity,         label: 'Speech' },
-  { to: '/roadmap',      icon: Map,              label: 'Roadmap' },
+  { to: '/roadmap',       icon: Map,    label: 'Roadmap' },
+  { to: '/job-matching',  icon: Target, label: 'Job Match' },
 ];
 
 export default function Navbar() {

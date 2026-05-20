@@ -11,6 +11,7 @@ export default function ResumeUpload() {
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [analyzingId, setAnalyzingId] = useState(null);
   const fileRef = useRef(null);
 
   const fetchData = useCallback(() => {
@@ -79,17 +80,28 @@ export default function ResumeUpload() {
   };
 
   const handleAnalyze = async (id) => {
+    setAnalyzingId(id);
+    setError('');
+    setSuccess('');
     try {
       const res = await authFetch(`/resume/${id}/analyze`, {
         method: 'POST',
         body: JSON.stringify({}),
       });
+      const data = await res.json();
       if (res.ok) {
-        setSuccess('Analysis complete!');
+        setSuccess('✅ Analysis complete! Redirecting to results...');
         fetchData();
+        setTimeout(() => {
+          window.location.href = `/resume/${id}/analysis`;
+        }, 1200);
+      } else {
+        setError(data.detail || 'Analysis failed. Please try again.');
       }
     } catch (e) {
-      setError('Analysis failed');
+      setError(e.message || 'Cannot connect to server. Is the backend running?');
+    } finally {
+      setAnalyzingId(null);
     }
   };
 
@@ -267,9 +279,12 @@ export default function ResumeUpload() {
                     ) : (
                       <button
                         onClick={() => handleAnalyze(r.id)}
-                        className="px-3 py-1.5 rounded-lg text-xs font-medium btn-gradient"
+                        disabled={analyzingId === r.id}
+                        className="px-3 py-1.5 rounded-lg text-xs font-medium btn-gradient disabled:opacity-60 flex items-center gap-1.5"
                       >
-                        🔍 Analyze
+                        {analyzingId === r.id ? (
+                          <><div className="w-3 h-3 border border-white/40 border-t-white rounded-full loader-spin" /> Analyzing...</>
+                        ) : '🔍 Analyze'}
                       </button>
                     )}
                     <button
