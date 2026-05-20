@@ -1,40 +1,52 @@
-# ⚡ IntelliCode AI — Smart Career Prep Platform
+﻿# AI Code Interview
 
-> An AI-powered, full-stack career preparation platform that helps engineers ace interviews, optimize resumes, solve coding challenges, and build personalized learning roadmaps — powered by **Google Gemini AI**.
+> A full-stack AI-powered interview preparation platform built with FastAPI, React, and Google Gemini.
 
 ---
 
-## 🚀 Features
+## 🚀 What it does
 
-| Module | Description |
-|---|---|
-| 🎤 **AI Interview** | Voice-enabled mock interviews with real-time Gemini AI feedback |
-| 🏢 **Company Prep** | Company-specific interview simulations (Google, Amazon, Meta, etc.) |
-| 📄 **Resume Optimizer** | AI rewrites your resume for target companies with ATS scoring & PDF export |
-| 💻 **Coding Challenges** | In-browser coding with Monaco editor and auto-evaluation |
-| 🗺️ **Roadmap Generator** | Personalized daily study plans based on your performance |
-| 😊 **Emotion Detection** | Face-API based expression analysis during mock interviews |
-| 🎙️ **Speech Confidence** | Real-time speech-to-text confidence scoring |
+- Mock interviews with AI-driven feedback
+- Resume analysis and optimization for job applications
+- In-browser coding challenges with evaluation
+- Personalized roadmap generation
+- Job matching and company-specific preparation
+- Resume PDF generation from optimized content
+
+---
+
+## 🌟 Features
+
+- AI Interview Practice: simulated interviews with audio/text feedback
+- Resume Upload & Analysis: parse, review, and score resumes
+- Coding Challenges: practice problems with in-browser editor support
+- Roadmap Generation: personalized study plans for interview readiness
+- Auth & User Management: secure login, registration, and JWT token flow
+- MongoDB Storage: store users, resumes, and session data
+- AI Job Matching Engine: recomends suitable job roles,company fit percentage,salary estimation and skill gap       analysis using AI
 
 ---
 
 ## 🛠 Tech Stack
 
-**Frontend**
-- React 18 + Vite
-- Tailwind CSS + Framer Motion
-- Lucide Icons, Chart.js, Monaco Editor
-
 **Backend**
-- Python 3.11+ + FastAPI
+- Python 3.11+
+- FastAPI
 - MongoDB + Beanie ODM
-- JWT Authentication (access + refresh tokens)
-- Google Gemini 1.5 Flash AI
-- ReportLab (PDF generation)
+- JWT authentication
+- Google Gemini AI integration
+- ReportLab for PDF generation
+
+**Frontend**
+- React + Vite
+- Tailwind CSS
+- Monaco Editor
+- Lucide Icons
+- Chart.js
 
 ---
 
-## ⚙️ Setup & Installation
+## ⚙️ Local Setup
 
 ### Prerequisites
 - Node.js 18+
@@ -42,30 +54,27 @@
 - MongoDB (local or Atlas)
 - Google Gemini API key
 
-### 1. Clone & Setup
+### 1. Clone repository
 
 ```bash
-git clone https://github.com/your-username/intellicode-ai.git
-cd intellicode-ai
+git clone https://github.com/Arpita-Vaid/ai_code_interview.git
+cd ai_code_interview
 ```
 
-### 2. Backend Setup
+### 2. Backend setup
 
 ```bash
-# Create virtual environment
 python -m venv venv
-venv\Scripts\activate      # Windows
-source venv/bin/activate   # macOS/Linux
-
-# Install dependencies
+venv\Scripts\activate  # Windows
+# source venv/bin/activate  # macOS/Linux
 pip install -r requirements.txt
 ```
 
-Create `.env` in the project root:
+Create a `.env` file in the project root with values such as:
 
 ```env
-MONGODB_URI=mongodb://localhost:27017/intellicode_ai
-SECRET_KEY=your_super_secret_key_here
+MONGODB_URI=mongodb://localhost:27017/ai_code_interview
+SECRET_KEY=your_super_secret_key
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 REFRESH_TOKEN_EXPIRE_DAYS=7
@@ -79,9 +88,9 @@ Start the backend:
 python -m uvicorn backend.app:app --reload --host 0.0.0.0 --port 8000
 ```
 
-API docs available at: [http://localhost:8000/docs](http://localhost:8000/docs)
+Open API docs at: [http://localhost:8000/docs](http://localhost:8000/docs)
 
-### 3. Frontend Setup
+### 3. Frontend setup
 
 ```bash
 cd frontend
@@ -89,71 +98,72 @@ npm install
 npm run dev
 ```
 
-App runs at: [http://localhost:5173](http://localhost:5173)
+Open the app at: [http://localhost:5173](http://localhost:5173)
 
 ---
 
 ## 📁 Project Structure
 
 ```
-intellicode-ai/
+ai_code_interview/
 ├── backend/
-│   ├── app.py                    # FastAPI entrypoint
-│   ├── models.py                 # Beanie MongoDB models
-│   ├── gemini_service.py         # Gemini AI integration
-│   ├── resume_ai_engine.py       # Resume parsing & analysis
-│   ├── resume_optimizer.py       # Company-specific AI optimizer
-│   ├── resume_pdf_generator.py   # ReportLab PDF generation
-│   ├── routers/
-│   │   ├── auth_router.py
-│   │   ├── resume_router.py
-│   │   ├── ai_interview_router.py
-│   │   ├── coding_router.py
-│   │   └── roadmap_router.py
-│   └── auth/
-└── frontend/
-    ├── src/
-    │   ├── pages/               # All page components
-    │   ├── components/          # Navbar, shared UI
-    │   ├── context/             # Auth context
-    │   └── api.js               # Centralized API client
-    └── index.html
+│   ├── app.py
+│   ├── ai_engine.py
+│   ├── coding_problems.py
+│   ├── config.py
+│   ├── database.py
+│   ├── gemini_service.py
+│   ├── job_matching_engine.py
+│   ├── migrate_db.py
+│   ├── migrate_sqlite_to_mongo.py
+│   ├── models.py
+│   ├── old_models_sqlite.py
+│   ├── question_bank.py
+│   ├── resume_ai_engine.py
+│   ├── resume_optimizer.py
+│   ├── resume_pdf_generator.py
+│   ├── roadmap_engine.py
+│   ├── schemas.py
+│   ├── auth/
+│   ├── resume_templates/
+│   └── routers/
+├── frontend/
+│   ├── package.json
+│   ├── tsconfig.json
+│   ├── vite.config.js
+│   ├── public/
+│   └── src/
+├── uploads/
+├── requirements.txt
+├── test_pdf_gen.py
+├── test_templates.py
+└── README.md
 ```
 
 ---
 
-## 🔑 API Endpoints
+## 🔗 Main API Endpoints
 
 | Method | Endpoint | Description |
 |---|---|---|
-| POST | `/auth/register` | Create account |
-| POST | `/auth/login` | Sign in, get JWT tokens |
-| POST | `/resume/upload` | Upload PDF resume |
-| POST | `/resume/{id}/analyze` | Run AI analysis |
-| POST | `/resume/{id}/optimize` | Company-specific AI optimization |
-| GET | `/resume/{id}/optimization/{opt_id}/pdf` | Download optimized PDF |
-| POST | `/ai-interview/session/start` | Start AI interview session |
-| GET | `/roadmap/generate` | Generate personalized roadmap |
+| POST | `/auth/register` | Register a new user |
+| POST | `/auth/login` | Login and receive JWT tokens |
+| POST | `/resume/upload` | Upload a resume |
+| POST | `/resume/{id}/analyze` | Analyze a resume with AI |
+| POST | `/resume/{id}/optimize` | Generate optimized resume content |
+| GET | `/resume/{id}/optimization/{opt_id}/pdf` | Download the optimized resume PDF |
+| POST | `/ai-interview/session/start` | Start an AI interview session |
+| GET | `/roadmap/generate` | Generate a personalized study roadmap |
 
 ---
 
-## 🌐 Deployment
+## 🧪 Tests
 
-### Backend (e.g., Railway / Render)
-```bash
-uvicorn backend.app:app --host 0.0.0.0 --port $PORT
-```
-
-### Frontend (e.g., Vercel / Netlify)
-```bash
-cd frontend && npm run build
-# Deploy the `dist/` folder
-```
-
-Update `FRONTEND_URL` in `.env` and `VITE_API_URL` in frontend env to your deployed URLs.
+- `test_templates.py` - template validation
+- `test_pdf_gen.py` - PDF generation tests
 
 ---
 
 ## 📄 License
 
-MIT License — © 2026 IntelliCode AI
+MIT License
